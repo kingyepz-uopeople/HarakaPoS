@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { formatDate, getTodayDate } from "@/utils/formatDate";
+import { getPricePerKg } from "@/utils/settings";
 import type { Sale, User } from "@/lib/types";
 
 /**
@@ -22,6 +23,8 @@ export default function SalesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [drivers, setDrivers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pricePerKg, setPricePerKg] = useState<number>(120);
+  const [useCustomPrice, setUseCustomPrice] = useState(false);
   const [formData, setFormData] = useState({
     amount: "",
     payment_method: "Cash" as "Cash" | "M-Pesa",
@@ -56,6 +59,10 @@ export default function SalesPage() {
       .eq("role", "driver");
 
     if (driversData) setDrivers(driversData as User[]);
+
+    // Load price per kg from settings
+    const defaultPrice = await getPricePerKg();
+    setPricePerKg(defaultPrice);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -96,6 +103,22 @@ export default function SalesPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Handle quantity change and auto-calculate amount
+  function handleQuantityChange(quantity: string) {
+    setFormData({ ...formData, quantity_sold: quantity });
+    
+    if (!useCustomPrice && quantity && parseFloat(quantity) > 0) {
+      const calculatedAmount = parseFloat(quantity) * pricePerKg;
+      setFormData(prev => ({ ...prev, quantity_sold: quantity, amount: calculatedAmount.toFixed(2) }));
+    }
+  }
+
+  // Handle manual amount change (custom pricing)
+  function handleAmountChange(amount: string) {
+    setFormData({ ...formData, amount });
+    setUseCustomPrice(true);
   }
 
   return (
@@ -145,31 +168,47 @@ export default function SalesPage() {
                   step="0.1"
                   placeholder="50"
                   value={formData.quantity_sold}
-                  onChange={(e) => setFormData({ ...formData, quantity_sold: e.target.value })}
+                  onChange={(e) => handleQuantityChange(e.target.value)}
                   required
                 />
+                <p className="text-xs text-gray-500">
+                  Default price: {formatCurrency(pricePerKg)}/kg
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="amount">Total Amount (KES)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="amount">Total Amount (KES)</Label>
+                  {useCustomPrice && (
+                    <span className="text-xs text-orange-600 font-medium">Custom Price</span>
+                  )}
+                </div>
                 <Input
                   id="amount"
                   type="number"
                   step="0.01"
-                  placeholder="5000"
+                  placeholder="Auto-calculated"
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  onChange={(e) => handleAmountChange(e.target.value)}
                   required
                 />
+                <p className="text-xs text-gray-500">
+                  {!useCustomPrice ? "Auto-calculated from quantity × price/kg" : "Manual override active"}
+                </p>
               </div>
 
               {/* Live Price per Kg Preview */}
               {formData.quantity_sold && formData.amount && parseFloat(formData.quantity_sold) > 0 && (
                 <div className="p-3 bg-green-50 rounded-md border border-green-200">
-                  <div className="text-sm text-green-600 font-medium">Price per Kg</div>
+                  <div className="text-sm text-green-600 font-medium">Actual Price per Kg</div>
                   <div className="text-2xl font-bold text-green-700">
                     {formatCurrency(parseFloat(formData.amount) / parseFloat(formData.quantity_sold))}
                   </div>
+                  {useCustomPrice && (
+                    <div className="text-xs text-orange-600 mt-1">
+                      Differs from default: {formatCurrency(pricePerKg)}/kg
+                    </div>
+                  )}
                 </div>
               )}
 

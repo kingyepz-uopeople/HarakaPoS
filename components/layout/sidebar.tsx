@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, ShoppingCart, Package, Truck, BarChart3, LogOut } from "lucide-react";
+import { Home, ShoppingCart, Package, Truck, BarChart3, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
@@ -18,6 +18,7 @@ const navigation = [
   { name: "Stock", href: "/dashboard/stock", icon: Package },
   { name: "Deliveries", href: "/dashboard/deliveries", icon: Truck },
   { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export function Sidebar() {

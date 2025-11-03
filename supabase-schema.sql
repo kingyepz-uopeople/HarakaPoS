@@ -132,17 +132,23 @@ CREATE POLICY "Authenticated users can update deliveries" ON deliveries
 -- ============================================
 CREATE TABLE IF NOT EXISTS settings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  company_name TEXT NOT NULL DEFAULT 'Haraka Wedges Supplies',
-  phone TEXT NOT NULL DEFAULT '+254 712 345 678',
-  address TEXT NOT NULL DEFAULT 'Nairobi, Kenya',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
+  key TEXT UNIQUE NOT NULL,
+  value TEXT NOT NULL,
+  type TEXT DEFAULT 'string',
+  description TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Insert default settings
-INSERT INTO settings (company_name, phone, address) 
-VALUES ('Haraka Wedges Supplies', '+254 712 345 678', 'Nairobi, Kenya')
-ON CONFLICT DO NOTHING;
+INSERT INTO settings (key, value, type, description) VALUES
+('price_per_kg', '120', 'number', 'Default price per kg for potato sales'),
+('delivery_fee_flat', '100', 'number', 'Flat delivery fee'),
+('payment_modes', '["Cash", "M-Pesa", "Bank Transfer"]', 'json', 'Available payment methods'),
+('business_name', 'Haraka Wedges Supplies', 'string', 'Business name'),
+('business_phone', '+254 712 345 678', 'string', 'Business phone number'),
+('business_address', 'Nairobi, Kenya', 'string', 'Business address'),
+('currency', 'KES', 'string', 'Currency code')
+ON CONFLICT (key) DO NOTHING;
 
 -- RLS Policies for settings table
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;

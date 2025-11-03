@@ -58,9 +58,23 @@ export interface Delivery {
 
 export interface Settings {
   id: string;
-  company_name: string;
-  phone: string;
-  address: string;
+  key: string;
+  value: string;
+  type: 'string' | 'number' | 'json';
+  description?: string;
+  updated_at?: string;
+}
+
+// Helper type for parsed settings
+export interface AppSettings {
+  price_per_kg: number;
+  delivery_fee_flat: number;
+  payment_modes: string[];
+  business_name: string;
+  business_phone: string;
+  business_address: string;
+  currency: string;
+  tax_rate?: number;
 }
 
 // Extended types with joins for UI
