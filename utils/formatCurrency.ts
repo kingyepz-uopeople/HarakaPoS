@@ -1,15 +1,13 @@
 /**
  * Format a number as Kenyan Shillings (KES)
  * @param amount - The amount to format
- * @returns Formatted currency string (e.g., "KES 1,234.50")
+ * @returns Formatted currency string (e.g., "Ksh 1,234.50")
  */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-KE", {
-    style: "currency",
-    currency: "KES",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  // Use manual formatting to avoid hydration mismatches between server and client
+  // Intl.NumberFormat can produce different results based on locale data availability
+  const formatted = amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `Ksh ${formatted}`;
 }
 
 /**
