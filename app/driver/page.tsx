@@ -56,15 +56,12 @@ export default function DriverPage() {
           delivery_status,
           created_at,
           updated_at,
-          customer:customers(
+          customer_id,
+          customers!inner(
             id,
             name,
             phone,
             location
-          ),
-          driver:users!orders_driver_id_fkey(
-            id,
-            name
           )
         `)
         .eq("driver_id", user.id)
@@ -73,17 +70,20 @@ export default function DriverPage() {
 
       if (data) {
         // Transform orders to match the expected delivery structure
-        const transformedData = data.map(order => ({
-          id: order.id,
-          customer_name: order.customer?.name || "Unknown",
-          customer_phone: order.customer?.phone || "N/A",
-          location: order.delivery_location || order.customer?.location || "N/A",
-          status: order.delivery_status,
-          created_at: order.created_at,
-          updated_at: order.updated_at,
-          quantity_kg: order.quantity_kg,
-          total_amount: order.total_amount
-        }));
+        const transformedData = data.map((order: any) => {
+          const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers;
+          return {
+            id: order.id,
+            customer_name: customer?.name || "Unknown",
+            customer_phone: customer?.phone || "N/A",
+            location: order.delivery_location || customer?.location || "N/A",
+            status: order.delivery_status,
+            created_at: order.created_at,
+            updated_at: order.updated_at,
+            quantity_kg: order.quantity_kg,
+            total_amount: order.total_amount
+          };
+        });
         setDeliveries(transformedData);
       }
     }
