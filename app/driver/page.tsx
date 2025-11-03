@@ -45,16 +45,47 @@ export default function DriverPage() {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
+      // Fetch orders assigned to this driver
       const { data } = await supabase
-        .from("deliveries")
+        .from("orders")
         .select(`
-          *,
-          sale:sales(*)
+          id,
+          quantity_kg,
+          total_amount,
+          delivery_location,
+          delivery_status,
+          created_at,
+          updated_at,
+          customer:customers(
+            id,
+            name,
+            phone,
+            location
+          ),
+          driver:users!orders_driver_id_fkey(
+            id,
+            name
+          )
         `)
         .eq("driver_id", user.id)
+        .in("delivery_status", ["Scheduled", "Pending", "On the Way", "Delivered"])
         .order("created_at", { ascending: false });
 
-      if (data) setDeliveries(data);
+      if (data) {
+        // Transform orders to match the expected delivery structure
+        const transformedData = data.map(order => ({
+          id: order.id,
+          customer_name: order.customer?.name || "Unknown",
+          customer_phone: order.customer?.phone || "N/A",
+          location: order.delivery_location || order.customer?.location || "N/A",
+          status: order.delivery_status,
+          created_at: order.created_at,
+          updated_at: order.updated_at,
+          quantity_kg: order.quantity_kg,
+          total_amount: order.total_amount
+        }));
+        setDeliveries(transformedData);
+      }
     }
     
     setLoading(false);
@@ -62,8 +93,11 @@ export default function DriverPage() {
 
   async function updateStatus(deliveryId: string, newStatus: string) {
     const { error } = await supabase
-      .from("deliveries")
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .from("orders")
+      .update({ 
+        delivery_status: newStatus, 
+        updated_at: new Date().toISOString() 
+      })
       .eq("id", deliveryId);
 
     if (error) {
@@ -156,12 +190,10 @@ export default function DriverPage() {
                         <MapPin className="h-4 w-4" />
                         {delivery.location}
                       </div>
-                      {delivery.sale && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Package className="h-4 w-4" />
-                          {delivery.sale.quantity_sold} kg - {formatCurrency(delivery.sale.amount)}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Package className="h-4 w-4" />
+                        {delivery.quantity_kg} kg - {formatCurrency(delivery.total_amount)}
+                      </div>
                     </div>
                   </div>
                   <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${getStatusColor(delivery.status)}`}>
