@@ -41,7 +41,8 @@ export default function SalesPage() {
     price_per_kg: 0,
     total_amount: 0,
     payment_method: 'Cash' as PaymentMethod,
-    delivery_location: ''
+    delivery_location: '',
+    driver_id: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -141,7 +142,8 @@ export default function SalesPage() {
         price_per_kg: defaultPrice,
         total_amount: 0,
         payment_method: 'Cash',
-        delivery_location: ''
+        delivery_location: '',
+        driver_id: ''
       });
       return;
     }
@@ -159,7 +161,8 @@ export default function SalesPage() {
         price_per_kg: price,
         total_amount: total,
         payment_method: 'Cash',
-        delivery_location: order.customer?.location || ''
+        delivery_location: order.customer?.location || '',
+        driver_id: order.assigned_driver || '' // Copy driver from order
       });
     }
   };
@@ -198,7 +201,8 @@ export default function SalesPage() {
       price_per_kg: defaultPrice,
       total_amount: 0,
       payment_method: 'Cash',
-      delivery_location: ''
+      delivery_location: '',
+      driver_id: ''
     });
     setError('');
   };
@@ -226,7 +230,7 @@ export default function SalesPage() {
         throw new Error('Please select a customer');
       }
 
-      // Insert sale
+      // Insert sale - only include fields that exist in current schema
       const saleData: any = {
         date: new Date().toISOString(),
         customer_id: formData.customer_id,
@@ -234,15 +238,51 @@ export default function SalesPage() {
         price_per_kg: formData.price_per_kg,
         total_amount: formData.total_amount,
         payment_method: formData.payment_method,
-        delivery_location: formData.delivery_location,
-        order_id: saleType === 'order' ? selectedOrder : null
       };
+
+      // Add optional fields that may not exist yet
+      if (formData.delivery_location) {
+        saleData.delivery_location = formData.delivery_location;
+      }
+
+      // Copy driver assignment from order
+      if (formData.driver_id) {
+        saleData.driver_id = formData.driver_id;
+      }
+
+      // Only add order_id if migration has been applied
+      if (saleType === 'order' && selectedOrder) {
+        saleData.order_id = selectedOrder;
+      }
 
       const { error: insertError } = await supabase
         .from('sales')
         .insert([saleData]);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Insert error details:', insertError);
+        
+        // If columns don't exist, retry without them
+        if (insertError.message?.includes('order_id') || 
+            insertError.message?.includes('delivery_location') || 
+            insertError.code === '42703') {
+          console.warn('Some columns not found, retrying with basic fields...');
+          
+          // Remove fields that might not exist
+          delete saleData.order_id;
+          delete saleData.delivery_location;
+          
+          const { error: retryError } = await supabase
+            .from('sales')
+            .insert([saleData]);
+            
+          if (retryError) {
+            throw new Error(retryError.message || retryError.details || 'Failed to insert sale');
+          }
+        } else {
+          throw new Error(insertError.message || insertError.details || 'Failed to insert sale');
+        }
+      }
 
       // If sale from order, mark order as Delivered
       if (saleType === 'order' && selectedOrder) {
@@ -262,7 +302,8 @@ export default function SalesPage() {
       fetchData();
     } catch (err: any) {
       console.error('Error recording sale:', err);
-      setError(err.message);
+      const errorMessage = err.message || err.error_description || err.hint || JSON.stringify(err) || 'Failed to record sale';
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -492,7 +533,8 @@ export default function SalesPage() {
                           price_per_kg: defaultPrice,
                           total_amount: 0,
                           payment_method: 'Cash',
-                          delivery_location: ''
+                          delivery_location: '',
+                          driver_id: ''
                         });
                       }}
                       className="mr-2"
