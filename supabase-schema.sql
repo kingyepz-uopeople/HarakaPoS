@@ -67,6 +67,7 @@ CREATE POLICY "Authenticated users can insert stock" ON stock
 CREATE TABLE IF NOT EXISTS sales (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   date DATE NOT NULL DEFAULT CURRENT_DATE,
+  order_id UUID REFERENCES orders(id) ON DELETE SET NULL, -- Link to order if sale came from pre-order
   customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
   customer_name TEXT, -- Kept for historical records, nullable
   customer_phone TEXT,
@@ -100,6 +101,7 @@ CREATE POLICY "Authenticated users can update sales" ON sales
 
 -- Index for customer_id
 CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
+CREATE INDEX IF NOT EXISTS idx_sales_order ON sales(order_id);
 
 -- ============================================
 -- DELIVERIES TABLE

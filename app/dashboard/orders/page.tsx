@@ -39,6 +39,7 @@ export default function OrdersPage() {
     fetchCustomers();
     fetchDrivers();
     fetchPricePerKg();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPricePerKg = async () => {

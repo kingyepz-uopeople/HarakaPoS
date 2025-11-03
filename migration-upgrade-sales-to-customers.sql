@@ -11,6 +11,7 @@
 -- Step 1: Add new columns
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES customers(id) ON DELETE SET NULL;
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS total_amount DECIMAL(10, 2);
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS order_id UUID REFERENCES orders(id) ON DELETE SET NULL;
 
 -- Step 2: Add customer_name column if it doesn't exist (for backward compatibility)
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name TEXT;
@@ -51,6 +52,7 @@ END $$;
 
 -- Step 8: Add index for customer_id
 CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
+CREATE INDEX IF NOT EXISTS idx_sales_order ON sales(order_id);
 
 -- Step 9: Create function to reduce stock when sale is recorded
 CREATE OR REPLACE FUNCTION reduce_stock_on_sale()

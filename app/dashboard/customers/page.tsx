@@ -23,6 +23,7 @@ export default function CustomersPage() {
 
   useEffect(() => {
     fetchCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -265,7 +266,7 @@ export default function CustomersPage() {
                     {searchQuery ? (
                       <div className="text-sm text-gray-500">
                         <Search className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                        <p>No customers found matching "{searchQuery}"</p>
+                        <p>No customers found matching &quot;{searchQuery}&quot;</p>
                         <button
                           onClick={() => setSearchQuery("")}
                           className="mt-2 text-indigo-600 hover:text-indigo-500"

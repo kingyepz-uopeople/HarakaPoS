@@ -1,338 +1,406 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Sale, SaleWithDelivery, Customer, User, PaymentMethod } from "@/lib/types";
-import { formatCurrency } from "@/utils/formatCurrency";
-import { formatDate, getTodayDate } from "@/utils/formatDate";
-import { getPricePerKg } from "@/utils/settings";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, ShoppingCart, TrendingUp, Package } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { SaleWithDelivery, PaymentMethod, Order, Customer, Settings } from '@/lib/types';
+import { 
+  ShoppingCart, 
+  Plus, 
+  X, 
+  TrendingUp, 
+  DollarSign, 
+  Package,
+  AlertCircle,
+  Receipt,
+  Users
+} from 'lucide-react';
 
-/**
- * Sales Page Component
- * Record sales with customer selection, auto-pricing, and stock reduction
- */
+type SaleType = 'order' | 'walkin';
 
 export default function SalesPage() {
-  const [sales, setSales] = useState<SaleWithDelivery[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [drivers, setDrivers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pricePerKg, setPricePerKg] = useState<number>(120);
-  const [showAddModal, setShowAddModal] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    customer_id: "",
-    quantity_sold: "",
-    price_per_kg: "",
-    total_amount: "",
-    payment_method: "Cash" as PaymentMethod,
-    driver_id: "",
-    delivery_location: "",
-  });
-
   const supabase = createClient();
+  
+  const [sales, setSales] = useState<SaleWithDelivery[]>([]);
+  const [orders, setOrders] = useState<(Order & { customer?: Customer })[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [defaultPrice, setDefaultPrice] = useState(120);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+
+  // Stats
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalSales, setTotalSales] = useState(0);
+  const [totalQuantity, setTotalQuantity] = useState(0);
+
+  // Form state
+  const [saleType, setSaleType] = useState<SaleType>('order');
+  const [selectedOrder, setSelectedOrder] = useState<string>('');
+  const [formData, setFormData] = useState({
+    customer_id: '',
+    quantity_sold: 0,
+    price_per_kg: 0,
+    total_amount: 0,
+    payment_method: 'Cash' as PaymentMethod,
+    delivery_location: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    loadData();
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadData() {
+  const fetchData = async () => {
     try {
-      // Load sales with customer details
-      const { data: salesData } = await supabase
-        .from("sales")
+      setLoading(true);
+
+      // Fetch sales with related data
+      const { data: salesData, error: salesError } = await supabase
+        .from('sales')
         .select(`
           *,
           customer:customers(*),
-          driver:users(*)
+          driver:users(*),
+          order:orders(*, customer:customers(*))
         `)
-        .order("date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .order('date', { ascending: false });
 
-      if (salesData) setSales(salesData as SaleWithDelivery[]);
+      if (salesError) throw salesError;
+      setSales(salesData || []);
 
-      // Load customers
-      const { data: customersData } = await supabase
-        .from("customers")
-        .select("*")
-        .order("name");
+      // Calculate stats
+      const revenue = (salesData || []).reduce((sum, sale) => sum + sale.total_amount, 0);
+      const quantity = (salesData || []).reduce((sum, sale) => sum + sale.quantity_sold, 0);
+      setTotalRevenue(revenue);
+      setTotalSales((salesData || []).length);
+      setTotalQuantity(quantity);
 
-      if (customersData) setCustomers(customersData);
+      // Fetch pending/scheduled orders (for order-based sales)
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*, customer:customers(*)')
+        .in('delivery_status', ['Pending', 'On the Way'])
+        .order('delivery_date', { ascending: true });
 
-      // Load drivers
-      const { data: driversData } = await supabase
-        .from("users")
-        .select("*")
-        .eq("role", "driver")
-        .order("name");
+      if (ordersError) throw ordersError;
+      setOrders(ordersData || []);
 
-      if (driversData) setDrivers(driversData);
+      // Fetch customers (for walk-in sales)
+      const { data: customersData, error: customersError } = await supabase
+        .from('customers')
+        .select('*')
+        .order('name', { ascending: true });
 
-      // Load default price per kg from settings
-      const defaultPrice = await getPricePerKg();
-      setPricePerKg(defaultPrice);
-      setFormData(prev => ({ ...prev, price_per_kg: defaultPrice.toString() }));
-    } catch (error) {
-      console.error("Error loading data:", error);
-    }
-  }
+      if (customersError) throw customersError;
+      setCustomers(customersData || []);
 
-  // Handle quantity change and auto-calculate total
-  function handleQuantityChange(quantity: string) {
-    setFormData(prev => ({ ...prev, quantity_sold: quantity }));
-    
-    if (quantity && parseFloat(quantity) > 0 && formData.price_per_kg) {
-      const total = parseFloat(quantity) * parseFloat(formData.price_per_kg);
-      setFormData(prev => ({ ...prev, quantity_sold: quantity, total_amount: total.toFixed(2) }));
-    }
-  }
+      // Fetch settings (for default price)
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('key', 'price_per_kg')
+        .single();
 
-  // Handle price change and recalculate total
-  function handlePriceChange(price: string) {
-    setFormData(prev => ({ ...prev, price_per_kg: price }));
-    
-    if (price && parseFloat(price) >= 0 && formData.quantity_sold) {
-      const total = parseFloat(formData.quantity_sold) * parseFloat(price);
-      setFormData(prev => ({ ...prev, price_per_kg: price, total_amount: total.toFixed(2) }));
-    }
-  }
+      if (settingsError) console.error('Settings error:', settingsError);
+      if (settingsData && settingsData.value) {
+        const price = parseFloat(settingsData.value);
+        if (!isNaN(price)) {
+          setDefaultPrice(price);
+        }
+      }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      // Get customer details for backward compatibility
-      const customer = customers.find(c => c.id === formData.customer_id);
-      
-      const { error } = await supabase.from("sales").insert({
-        date: getTodayDate(),
-        customer_id: formData.customer_id,
-        customer_name: customer?.name, // For backward compatibility
-        customer_phone: customer?.phone,
-        quantity_sold: parseFloat(formData.quantity_sold),
-        price_per_kg: parseFloat(formData.price_per_kg),
-        total_amount: parseFloat(formData.total_amount),
-        amount: parseFloat(formData.total_amount), // For backward compatibility
-        payment_method: formData.payment_method,
-        driver_id: formData.driver_id || null,
-        delivery_location: formData.delivery_location || customer?.location || null,
-        delivery_status: 'Pending',
-      });
-
-      if (error) throw error;
-
-      // Reset form
-      setFormData({
-        customer_id: "",
-        quantity_sold: "",
-        price_per_kg: pricePerKg.toString(),
-        total_amount: "",
-        payment_method: "Cash",
-        driver_id: "",
-        delivery_location: "",
-      });
-
-      setShowAddModal(false);
-      loadData();
-      alert("Sale recorded successfully! Stock has been reduced.");
-    } catch (error: any) {
-      console.error("Error recording sale:", error);
-      alert("Error recording sale: " + error.message);
+    } catch (err: any) {
+      console.error('Error fetching data:', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }
-
-  // Calculate stats
-  const stats = {
-    todaySales: sales.filter(s => s.date === getTodayDate()).length,
-    todayRevenue: sales
-      .filter(s => s.date === getTodayDate())
-      .reduce((sum, s) => sum + s.total_amount, 0),
-    totalRevenue: sales.reduce((sum, s) => sum + s.total_amount, 0),
-    totalQuantity: sales.reduce((sum, s) => sum + s.quantity_sold, 0),
   };
 
+  const handleOrderSelect = (orderId: string) => {
+    setSelectedOrder(orderId);
+    
+    if (!orderId) {
+      // Reset form
+      setFormData({
+        customer_id: '',
+        quantity_sold: 0,
+        price_per_kg: defaultPrice,
+        total_amount: 0,
+        payment_method: 'Cash',
+        delivery_location: ''
+      });
+      return;
+    }
+
+    // Auto-fill from order
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      const quantity = order.quantity_kg;
+      const price = order.price_per_kg || defaultPrice;
+      const total = quantity * price;
+
+      setFormData({
+        customer_id: order.customer_id || '',
+        quantity_sold: quantity,
+        price_per_kg: price,
+        total_amount: total,
+        payment_method: 'Cash',
+        delivery_location: order.customer?.location || ''
+      });
+    }
+  };
+
+  const handleCustomerSelect = (customerId: string) => {
+    setFormData(prev => ({ ...prev, customer_id: customerId }));
+    
+    // Auto-fill delivery location if customer selected
+    const customer = customers.find(c => c.id === customerId);
+    if (customer && customer.location) {
+      setFormData(prev => ({ ...prev, delivery_location: customer.location || '' }));
+    }
+  };
+
+  const handleQuantityChange = (quantity: number) => {
+    setFormData(prev => {
+      const total = quantity * prev.price_per_kg;
+      return { ...prev, quantity_sold: quantity, total_amount: total };
+    });
+  };
+
+  const handlePriceChange = (price: number) => {
+    setFormData(prev => {
+      const total = prev.quantity_sold * price;
+      return { ...prev, price_per_kg: price, total_amount: total };
+    });
+  };
+
+  const openModal = () => {
+    setShowModal(true);
+    setSaleType('order');
+    setSelectedOrder('');
+    setFormData({
+      customer_id: '',
+      quantity_sold: 0,
+      price_per_kg: defaultPrice,
+      total_amount: 0,
+      payment_method: 'Cash',
+      delivery_location: ''
+    });
+    setError('');
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedOrder('');
+    setError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+
+    try {
+      // Validate
+      if (formData.quantity_sold <= 0) {
+        throw new Error('Quantity must be greater than 0');
+      }
+      if (formData.total_amount <= 0) {
+        throw new Error('Total amount must be greater than 0');
+      }
+      if (!formData.customer_id) {
+        throw new Error('Please select a customer');
+      }
+
+      // Insert sale
+      const saleData: any = {
+        date: new Date().toISOString(),
+        customer_id: formData.customer_id,
+        quantity_sold: formData.quantity_sold,
+        price_per_kg: formData.price_per_kg,
+        total_amount: formData.total_amount,
+        payment_method: formData.payment_method,
+        delivery_location: formData.delivery_location,
+        order_id: saleType === 'order' ? selectedOrder : null
+      };
+
+      const { error: insertError } = await supabase
+        .from('sales')
+        .insert([saleData]);
+
+      if (insertError) throw insertError;
+
+      // If sale from order, mark order as Delivered
+      if (saleType === 'order' && selectedOrder) {
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({ delivery_status: 'Delivered' })
+          .eq('id', selectedOrder);
+
+        if (updateError) {
+          console.error('Error updating order status:', updateError);
+          // Don't throw - sale was recorded successfully
+        }
+      }
+
+      // Success
+      closeModal();
+      fetchData();
+    } catch (err: any) {
+      console.error('Error recording sale:', err);
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Loading sales...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Sales Management</h1>
-          <p className="text-gray-500">Record sales and track revenue</p>
+          <h1 className="text-2xl font-bold text-gray-900">Sales</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Record sales from orders or walk-in customers
+          </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="inline-flex items-center">
-          <Plus className="h-5 w-5 mr-2" />
+        <button
+          onClick={openModal}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Plus className="w-5 h-5" />
           Record Sale
-        </Button>
+        </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ShoppingCart className="h-6 w-6 text-indigo-600" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Today's Sales</dt>
-                  <dd className="text-lg font-medium text-gray-900">{stats.todaySales}</dd>
-                </dl>
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                KES {totalRevenue.toLocaleString()}
+              </p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-lg">
+              <DollarSign className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <TrendingUp className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Today's Revenue</dt>
-                  <dd className="text-lg font-medium text-gray-900">{formatCurrency(stats.todayRevenue)}</dd>
-                </dl>
-              </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Sales</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{totalSales}</p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <ShoppingCart className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <TrendingUp className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Revenue</dt>
-                  <dd className="text-lg font-medium text-gray-900">{formatCurrency(stats.totalRevenue)}</dd>
-                </dl>
-              </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Quantity (kg)</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {totalQuantity.toLocaleString()}
+              </p>
             </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Package className="h-6 w-6 text-orange-600" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Sold</dt>
-                  <dd className="text-lg font-medium text-gray-900">{stats.totalQuantity.toFixed(1)} kg</dd>
-                </dl>
-              </div>
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <Package className="w-6 h-6 text-purple-600" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Sales Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Sales</h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">Latest 50 sales transactions</p>
-        </div>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price/kg
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Payment
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Driver
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order #</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity (kg)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price/kg</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200">
               {sales.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No sales recorded yet
+                  <td colSpan={9} className="px-6 py-12 text-center">
+                    <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">No sales recorded yet</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Click &quot;Record Sale&quot; to get started
+                    </p>
                   </td>
                 </tr>
               ) : (
                 sales.map((sale) => (
-                  <tr key={sale.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(sale.date)}
+                  <tr key={sale.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {new Date(sale.date).toLocaleDateString('en-GB')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {sale.customer?.name || sale.customer_name || "—"}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {sale.customer?.phone || sale.customer_phone || ""}
-                      </div>
+                    <td className="px-6 py-4">
+                      {sale.order_id ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                          <Receipt className="w-3 h-3" />
+                          Order
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                          <Users className="w-3 h-3" />
+                          Walk-in
+                        </span>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {sale.quantity_sold} kg
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {sale.order_id ? `#${sale.order_id.slice(0, 8)}` : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(sale.price_per_kg)}
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {sale.customer?.name || sale.customer_name || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {formatCurrency(sale.total_amount)}
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {sale.quantity_sold}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        sale.payment_method === "M-Pesa" 
-                          ? "bg-green-100 text-green-700" 
-                          : sale.payment_method === "Bank Transfer"
-                          ? "bg-blue-100 text-blue-700"
-                          : sale.payment_method === "Credit Card"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-gray-100 text-gray-700"
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      KES {sale.price_per_kg}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      KES {sale.total_amount.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
+                        sale.payment_method === 'Cash' 
+                          ? 'bg-green-100 text-green-700'
+                          : sale.payment_method === 'M-Pesa'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
                       }`}>
                         {sale.payment_method}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        sale.delivery_status === "Delivered" 
-                          ? "bg-green-100 text-green-700" 
-                          : sale.delivery_status === "On the Way"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}>
-                        {sale.delivery_status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {sale.driver?.name || "—"}
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {sale.delivery_location || '-'}
                     </td>
                   </tr>
                 ))
@@ -342,152 +410,226 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* Add Sale Modal */}
-      {showAddModal && (
-        <div className="fixed z-10 inset-0 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowAddModal(false)}></div>
+      {/* Record Sale Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Record Sale</h2>
+              <button
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
-            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Record New Sale</h3>
-                <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-500">
-                  <span className="sr-only">Close</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Sale Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Sale Type
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      value="order"
+                      checked={saleType === 'order'}
+                      onChange={(e) => {
+                        setSaleType(e.target.value as SaleType);
+                        setSelectedOrder('');
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-900">From Order</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      value="walkin"
+                      checked={saleType === 'walkin'}
+                      onChange={(e) => {
+                        setSaleType(e.target.value as SaleType);
+                        setSelectedOrder('');
+                        setFormData({
+                          customer_id: '',
+                          quantity_sold: 0,
+                          price_per_kg: defaultPrice,
+                          total_amount: 0,
+                          payment_method: 'Cash',
+                          delivery_location: ''
+                        });
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-900">Walk-In Sale</span>
+                  </label>
+                </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Order Selection (if order type) */}
+              {saleType === 'order' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Customer</label>
-                  <select
-                    required
-                    value={formData.customer_id}
-                    onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  >
-                    <option value="">Select a customer</option>
-                    {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name} - {customer.phone} {customer.location && `(${customer.location})`}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Don't see the customer? <a href="/dashboard/customers" className="text-indigo-600 hover:text-indigo-500">Add them first</a>
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Quantity (kg)</label>
-                    <input
-                      type="number"
-                      required
-                      min="0.01"
-                      step="0.01"
-                      value={formData.quantity_sold}
-                      onChange={(e) => handleQuantityChange(e.target.value)}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      placeholder="50"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Price per kg</label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      step="0.01"
-                      value={formData.price_per_kg}
-                      onChange={(e) => handlePriceChange(e.target.value)}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      placeholder="120"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">Default: {formatCurrency(pricePerKg)}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Total Amount</label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={formData.total_amount}
-                    onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-50"
-                    placeholder="Auto-calculated"
-                    readOnly
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Auto-calculated: Quantity × Price per kg</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Order
+                  </label>
+                  {orders.length === 0 ? (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-yellow-800">
+                        <AlertCircle className="w-5 h-5" />
+                        <p className="text-sm">
+                          No pending orders available. All orders are either delivered or cancelled.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
                     <select
-                      value={formData.payment_method}
-                      onChange={(e) => setFormData({ ...formData, payment_method: e.target.value as PaymentMethod })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={selectedOrder}
+                      onChange={(e) => handleOrderSelect(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required={saleType === 'order'}
                     >
-                      <option value="Cash">Cash</option>
-                      <option value="M-Pesa">M-Pesa</option>
-                      <option value="Bank Transfer">Bank Transfer</option>
-                      <option value="Credit Card">Credit Card</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Assign Driver (Optional)</label>
-                    <select
-                      value={formData.driver_id}
-                      onChange={(e) => setFormData({ ...formData, driver_id: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    >
-                      <option value="">No driver</option>
-                      {drivers.map((driver) => (
-                        <option key={driver.id} value={driver.id}>
-                          {driver.name}
+                      <option value="">-- Select an order --</option>
+                      {orders.map((order) => (
+                        <option key={order.id} value={order.id}>
+                          {order.customer?.name || 'Unknown'} - {order.quantity_kg}kg - {order.customer?.location || 'N/A'} ({new Date(order.delivery_date).toLocaleDateString('en-GB')})
                         </option>
                       ))}
                     </select>
+                  )}
+                </div>
+              )}
+
+              {/* Customer Selection (if walk-in) */}
+              {saleType === 'walkin' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Customer
+                  </label>
+                  <select
+                    value={formData.customer_id}
+                    onChange={(e) => handleCustomerSelect(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">-- Select a customer --</option>
+                    {customers.map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name} - {customer.phone} ({customer.location})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantity (kg)
+                </label>
+                <input
+                  type="number"
+                  value={formData.quantity_sold || ''}
+                  onChange={(e) => handleQuantityChange(parseFloat(e.target.value) || 0)}
+                  disabled={saleType === 'order' && !!selectedOrder}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  min="0.1"
+                  step="0.1"
+                  required
+                />
+              </div>
+
+              {/* Price per kg */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Price per kg (KES)
+                </label>
+                <input
+                  type="number"
+                  value={formData.price_per_kg || ''}
+                  onChange={(e) => handlePriceChange(parseFloat(e.target.value) || 0)}
+                  disabled={saleType === 'order' && !!selectedOrder}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  min="1"
+                  required
+                />
+              </div>
+
+              {/* Total Amount (read-only) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Total Amount (KES)
+                </label>
+                <input
+                  type="number"
+                  value={formData.total_amount}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                />
+              </div>
+
+              {/* Delivery Location */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Delivery Location
+                </label>
+                <input
+                  type="text"
+                  value={formData.delivery_location}
+                  onChange={(e) => setFormData(prev => ({ ...prev, delivery_location: e.target.value }))}
+                  disabled={saleType === 'order' && !!selectedOrder}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="Enter delivery location"
+                />
+              </div>
+
+              {/* Payment Method */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Method
+                </label>
+                <select
+                  value={formData.payment_method}
+                  onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value as PaymentMethod }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="M-Pesa">M-Pesa</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+              </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-red-800">
+                    <AlertCircle className="w-5 h-5" />
+                    <p className="text-sm">{error}</p>
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Delivery Location (Optional)</label>
-                  <input
-                    type="text"
-                    value={formData.delivery_location}
-                    onChange={(e) => setFormData({ ...formData, delivery_location: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="e.g., Westlands, Nairobi"
-                  />
-                </div>
-
-                <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm disabled:opacity-50"
-                  >
-                    {loading ? "Recording..." : "Record Sale"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting || (saleType === 'order' && !selectedOrder)}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Recording...' : 'Record Sale'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

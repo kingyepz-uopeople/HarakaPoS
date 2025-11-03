@@ -32,6 +32,7 @@ export interface Stock {
 export interface Sale {
   id: string;
   date: string;
+  order_id?: string; // Link to order if sale came from pre-order
   customer_id?: string;
   customer_name?: string; // Kept for backwards compatibility
   customer_phone?: string;
@@ -115,6 +116,7 @@ export interface SaleWithDelivery extends Sale {
   delivery?: Delivery;
   driver?: User;
   customer?: Customer;
+  order?: Order; // Linked order if sale came from pre-order
 }
 
 export interface OrderWithDetails extends Order {
