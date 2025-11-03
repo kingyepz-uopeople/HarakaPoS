@@ -1,0 +1,23 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# TypeScript
+*.ts text
+*.tsx text
+
+# JavaScript
+*.js text
+*.jsx text
+
+# JSON
+*.json text
+
+# Markdown
+*.md text
+
+# SQL
+*.sql text
+
+# Config files
+.gitignore text
+.env* text
