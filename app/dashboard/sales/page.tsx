@@ -12,7 +12,9 @@ import {
   Package,
   AlertCircle,
   Receipt,
-  Users
+  Users,
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 type SaleType = 'order' | 'walkin';
@@ -35,6 +37,7 @@ export default function SalesPage() {
   // Form state
   const [saleType, setSaleType] = useState<SaleType>('order');
   const [selectedOrder, setSelectedOrder] = useState<string>('');
+  const [editingSale, setEditingSale] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customer_id: '',
     quantity_sold: 0,
@@ -210,6 +213,7 @@ export default function SalesPage() {
   const closeModal = () => {
     setShowModal(false);
     setSelectedOrder('');
+    setEditingSale(null);
     setError('');
   };
 
@@ -230,11 +234,14 @@ export default function SalesPage() {
         throw new Error('Please select a customer');
       }
 
-      // Insert sale - Check if migration columns exist
+      // Insert sale - Handle both old and new schema
+      // Old schema requires: amount
+      // New schema added: total_amount, customer_id, price_per_kg
       const saleData: any = {
         date: new Date().toISOString(),
         quantity_sold: formData.quantity_sold,
-        total_amount: formData.total_amount,
+        amount: formData.total_amount, // Old schema column (required)
+        total_amount: formData.total_amount, // New schema column (required)
         payment_method: formData.payment_method,
       };
 
@@ -246,6 +253,11 @@ export default function SalesPage() {
       // Add price_per_kg if provided (migration column)
       if (formData.price_per_kg) {
         saleData.price_per_kg = formData.price_per_kg;
+      }
+
+      // Add order_id if this is from an order (migration column)
+      if (saleType === 'order' && selectedOrder) {
+        saleData.order_id = selectedOrder;
       }
 
       // Log for debugging
@@ -303,6 +315,80 @@ export default function SalesPage() {
       setError(errorMessage);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (sale: SaleWithDelivery) => {
+    setEditingSale(sale.id);
+    setSaleType(sale.order_id ? 'order' : 'walkin');
+    setSelectedOrder(sale.order_id || '');
+    setFormData({
+      customer_id: sale.customer_id || '',
+      quantity_sold: sale.quantity_sold,
+      price_per_kg: sale.price_per_kg || 0,
+      total_amount: sale.total_amount,
+      payment_method: sale.payment_method,
+      delivery_location: sale.delivery_location || '',
+      driver_id: ''
+    });
+    setShowModal(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSale) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const updateData: any = {
+        quantity_sold: formData.quantity_sold,
+        amount: formData.total_amount,
+        total_amount: formData.total_amount,
+        payment_method: formData.payment_method,
+      };
+
+      if (formData.customer_id) updateData.customer_id = formData.customer_id;
+      if (formData.price_per_kg) updateData.price_per_kg = formData.price_per_kg;
+      if (formData.delivery_location) updateData.delivery_location = formData.delivery_location;
+
+      const { error: updateError } = await supabase
+        .from('sales')
+        .update(updateData)
+        .eq('id', editingSale);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      closeModal();
+      fetchData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update sale');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (saleId: string) => {
+    if (!confirm('Are you sure you want to delete this sale? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('sales')
+        .delete()
+        .eq('id', saleId);
+
+      if (deleteError) {
+        throw new Error(deleteError.message);
+      }
+
+      fetchData();
+    } catch (err: any) {
+      alert('Failed to delete sale: ' + err.message);
     }
   };
 
@@ -413,12 +499,13 @@ export default function SalesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {sales.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center">
+                  <td colSpan={10} className="px-6 py-12 text-center">
                     <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No sales recorded yet</p>
                     <p className="text-sm text-gray-400 mt-1">
@@ -474,6 +561,24 @@ export default function SalesPage() {
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {sale.delivery_location || '-'}
                     </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEdit(sale)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Edit sale"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(sale.id)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete sale"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -482,12 +587,14 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* Record Sale Modal */}
+      {/* Record/Edit Sale Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Record Sale</h2>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editingSale ? 'Edit Sale' : 'Record Sale'}
+              </h2>
               <button
                 onClick={closeModal}
                 className="text-gray-400 hover:text-gray-600"
@@ -496,8 +603,9 @@ export default function SalesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Sale Type Selection */}
+            <form onSubmit={editingSale ? handleUpdate : handleSubmit} className="p-6 space-y-6">
+              {/* Sale Type Selection - Only show when creating new sale */}
+              {!editingSale && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Sale Type
@@ -540,9 +648,10 @@ export default function SalesPage() {
                   </label>
                 </div>
               </div>
+              )}
 
-              {/* Order Selection (if order type) */}
-              {saleType === 'order' && (
+              {/* Order Selection (if order type and not editing) */}
+              {saleType === 'order' && !editingSale && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Order
@@ -696,10 +805,13 @@ export default function SalesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || (saleType === 'order' && !selectedOrder)}
+                  disabled={submitting || (saleType === 'order' && !selectedOrder && !editingSale)}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  {submitting ? 'Recording...' : 'Record Sale'}
+                  {submitting 
+                    ? (editingSale ? 'Updating...' : 'Recording...') 
+                    : (editingSale ? 'Update Sale' : 'Record Sale')
+                  }
                 </button>
               </div>
             </form>
