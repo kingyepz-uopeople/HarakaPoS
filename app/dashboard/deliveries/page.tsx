@@ -63,40 +63,6 @@ export default function DeliveriesPage() {
       setLoading(false);
     }
   }
-    }
-  }
-
-  function getStatusColor(status: string) {
-    switch (status) {
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "On the Way":
-        return "bg-blue-100 text-blue-800";
-      case "Delivered":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  }
-
-  return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Deliveries</h1>
-        <p className="text-gray-500">Assign and track deliveries</p>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Create Delivery Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Assign New Delivery</CardTitle>
-            <CardDescription>Create a delivery assignment</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="sale">Select Sale (Optional)</Label>
 
   async function updateOrderStatus(orderId: string, newStatus: OrderStatus) {
     try {
