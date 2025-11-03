@@ -6,21 +6,42 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { formatDate } from "@/utils/formatDate";
-import { LogOut, Package, MapPin, Phone, User, AlertCircle } from "lucide-react";
+import { 
+  LogOut, 
+  Package, 
+  MapPin, 
+  Phone, 
+  User, 
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Truck,
+  Calendar,
+  DollarSign,
+  Navigation,
+  ChevronRight,
+  Filter
+} from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import { useRouter } from "next/navigation";
 
 /**
- * Driver Dashboard Page
- * Mobile-friendly interface for drivers to view and update deliveries
+ * Driver Dashboard Page - Commercial Mobile App Style
+ * Mobile-first interface for drivers to manage deliveries
  * ROLE: driver only
  */
 
+type DeliveryStatus = "Scheduled" | "Pending" | "On the Way" | "Delivered";
+type FilterType = "all" | "today" | "scheduled" | "active";
+
 export default function DriverPage() {
   const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [filteredDeliveries, setFilteredDeliveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
   const [authorized, setAuthorized] = useState(false);
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const supabase = createClient();
   const router = useRouter();
 
@@ -28,6 +49,35 @@ export default function DriverPage() {
     checkRole();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    applyFilter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, deliveries]);
+
+  function applyFilter() {
+    let filtered = [...deliveries];
+    const today = new Date().toISOString().split('T')[0];
+
+    switch (filter) {
+      case "today":
+        filtered = filtered.filter(d => d.delivery_date === today);
+        break;
+      case "scheduled":
+        filtered = filtered.filter(d => d.status === "Scheduled" || d.status === "Pending");
+        break;
+      case "active":
+        filtered = filtered.filter(d => d.status === "On the Way");
+        break;
+      case "all":
+      default:
+        // Show all except delivered
+        filtered = filtered.filter(d => d.status !== "Delivered");
+        break;
+    }
+
+    setFilteredDeliveries(filtered);
+  }
 
   async function checkRole() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -82,10 +132,12 @@ export default function DriverPage() {
         .single();
       
       if (!userData?.name) {
-        console.error("Driver name not found");
+        console.error("Driver name not found for user:", user.id);
         setLoading(false);
         return;
       }
+
+      console.log("Driver name:", userData.name);
 
       // Fetch orders assigned to this driver by name
       const { data, error } = await supabase
@@ -93,14 +145,16 @@ export default function DriverPage() {
         .select(`
           id,
           quantity_kg,
-          total_amount,
-          delivery_location,
+          price_per_kg,
+          total_price,
+          delivery_date,
+          delivery_time,
           delivery_status,
           created_at,
           updated_at,
           customer_id,
           assigned_driver,
-          customers!inner(
+          customers(
             id,
             name,
             phone,
@@ -112,8 +166,21 @@ export default function DriverPage() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching deliveries:", error);
+        console.error("Error fetching deliveries - Raw:", error);
+        console.error("Error keys:", Object.keys(error));
+        console.error("Error stringified:", JSON.stringify(error, null, 2));
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        alert(`Error loading deliveries:\n${error.message || 'Unknown error'}\nCode: ${error.code || 'N/A'}`);
+        setLoading(false);
+        return;
       }
+
+      console.log("Fetched orders for driver:", data?.length || 0);
 
       if (data) {
         // Transform orders to match the expected delivery structure
@@ -123,12 +190,15 @@ export default function DriverPage() {
             id: order.id,
             customer_name: customer?.name || "Unknown",
             customer_phone: customer?.phone || "N/A",
-            location: order.delivery_location || customer?.location || "N/A",
+            location: customer?.location || "N/A",
             status: order.delivery_status,
+            delivery_date: order.delivery_date,
+            delivery_time: order.delivery_time,
             created_at: order.created_at,
             updated_at: order.updated_at,
             quantity_kg: order.quantity_kg,
-            total_amount: order.total_amount
+            price_per_kg: order.price_per_kg,
+            total_amount: order.total_price || (order.quantity_kg * order.price_per_kg)
           };
         });
         setDeliveries(transformedData);
@@ -156,25 +226,48 @@ export default function DriverPage() {
 
   function getStatusColor(status: string) {
     switch (status) {
+      case "Scheduled":
+        return "bg-purple-100 text-purple-800";
       case "Pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-yellow-100 text-yellow-800";
       case "On the Way":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-blue-100 text-blue-800";
       case "Delivered":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-green-100 text-green-800";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-gray-100 text-gray-800";
     }
   }
 
-  const pendingCount = deliveries.filter(d => d.status !== "Delivered").length;
+  function getStatusIcon(status: string) {
+    switch (status) {
+      case "Scheduled":
+        return <Calendar className="w-4 h-4" />;
+      case "Pending":
+        return <Clock className="w-4 h-4" />;
+      case "On the Way":
+        return <Truck className="w-4 h-4" />;
+      case "Delivered":
+        return <CheckCircle className="w-4 h-4" />;
+      default:
+        return <Package className="w-4 h-4" />;
+    }
+  }
+
+  const stats = {
+    total: deliveries.length,
+    pending: deliveries.filter(d => d.status === "Pending" || d.status === "Scheduled").length,
+    active: deliveries.filter(d => d.status === "On the Way").length,
+    completed: deliveries.filter(d => d.status === "Delivered").length,
+  };
 
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-gray-500">Loading...</div>
+          <Truck className="w-12 h-12 text-green-600 mx-auto mb-3 animate-bounce" />
+          <div className="text-gray-700 font-medium">Loading deliveries...</div>
         </div>
       </div>
     );
@@ -215,121 +308,225 @@ export default function DriverPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-primary text-white p-4 sticky top-0 z-10 shadow-md">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">HarakaPOS Driver</h1>
-            <p className="text-sm opacity-90">{userName}</p>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
+      {/* Modern Header */}
+      <header className="bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg sticky top-0 z-20">
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <Truck className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">Haraka Driver</h1>
+                <p className="text-sm text-green-100">{userName}</p>
+              </div>
+            </div>
+            <form action={signOut}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                type="submit" 
+                className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </form>
           </div>
-          <form action={signOut}>
-            <Button variant="outline" size="sm" type="submit" className="text-primary bg-white">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </form>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-4 gap-2">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <div className="text-xs text-green-100">Total</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-yellow-200">{stats.pending}</div>
+              <div className="text-xs text-green-100">Pending</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-blue-200">{stats.active}</div>
+              <div className="text-xs text-green-100">Active</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-green-200">{stats.completed}</div>
+              <div className="text-xs text-green-100">Done</div>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* Stats */}
-      <div className="p-4">
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-gray-600">Total Deliveries</div>
-              <div className="text-2xl font-bold text-gray-900">{deliveries.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-gray-600">Pending</div>
-              <div className="text-2xl font-bold text-orange-600">{pendingCount}</div>
-            </CardContent>
-          </Card>
+      {/* Filter Tabs */}
+      <div className="bg-white border-b sticky top-[140px] z-10 shadow-sm">
+        <div className="flex overflow-x-auto px-4 py-3 gap-2">
+          {[
+            { value: "all", label: "Active", icon: Package },
+            { value: "today", label: "Today", icon: Calendar },
+            { value: "scheduled", label: "Scheduled", icon: Clock },
+            { value: "active", label: "En Route", icon: Truck },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.value}
+                onClick={() => setFilter(tab.value as FilterType)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  filter === tab.value
+                    ? "bg-green-600 text-white shadow-md"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
+      </div>
 
-        {/* Deliveries List */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">My Deliveries</h2>
-          
-          {loading && (
-            <div className="text-center py-8 text-gray-500">Loading...</div>
-          )}
-
-          {!loading && deliveries.length === 0 && (
-            <Card>
-              <CardContent className="p-8 text-center text-gray-500">
-                No deliveries assigned yet
-              </CardContent>
-            </Card>
-          )}
-
-          {!loading && deliveries.map((delivery) => (
-            <Card key={delivery.id} className="border-l-4" style={{
-              borderLeftColor: delivery.status === "Delivered" ? "#10b981" : 
-                              delivery.status === "On the Way" ? "#3b82f6" : "#f59e0b"
-            }}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{delivery.customer_name}</CardTitle>
-                    <div className="mt-2 space-y-1">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Phone className="h-4 w-4" />
-                        {delivery.customer_phone}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        {delivery.location}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Package className="h-4 w-4" />
-                        {delivery.quantity_kg} kg - {formatCurrency(delivery.total_amount)}
-                      </div>
+      {/* Deliveries List */}
+      <div className="p-4 space-y-3 pb-20">
+        {filteredDeliveries.length === 0 ? (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-12 text-center">
+              <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Deliveries</h3>
+              <p className="text-gray-500">
+                {filter === "all" ? "You're all caught up!" : `No ${filter} deliveries found`}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredDeliveries.map((delivery) => (
+            <Card 
+              key={delivery.id} 
+              className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => setSelectedDelivery(selectedDelivery?.id === delivery.id ? null : delivery)}
+            >
+              <CardContent className="p-4">
+                {/* Header Row */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-lg text-gray-900">{delivery.customer_name}</h3>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(delivery.status)}`}>
+                        {getStatusIcon(delivery.status)}
+                        {delivery.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 text-gray-400" />
+                      <span>{delivery.location}</span>
                     </div>
                   </div>
-                  <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${getStatusColor(delivery.status)}`}>
-                    {delivery.status}
-                  </span>
+                  <ChevronRight className={`w-5 h-5 text-gray-400 transition-transform ${selectedDelivery?.id === delivery.id ? 'rotate-90' : ''}`} />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xs text-gray-500 mb-3">
-                  Created: {formatDate(delivery.created_at, "time")}
+
+                {/* Quick Info */}
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Package className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-700 font-medium">{delivery.quantity_kg} kg</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <DollarSign className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-700 font-medium">{formatCurrency(delivery.total_amount)}</span>
+                  </div>
                 </div>
-                
-                {delivery.status !== "Delivered" && (
-                  <div className="flex gap-2">
-                    {delivery.status === "Pending" && (
-                      <Button
-                        onClick={() => updateStatus(delivery.id, "On the Way")}
-                        className="flex-1"
-                        size="sm"
-                      >
-                        Start Delivery
-                      </Button>
+
+                {/* Expanded Details */}
+                {selectedDelivery?.id === delivery.id && (
+                  <div className="border-t pt-3 mt-3 space-y-3 animate-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <Phone className="w-5 h-5 text-green-600" />
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-500">Customer Phone</div>
+                        <a href={`tel:${delivery.customer_phone}`} className="font-medium text-green-600">
+                          {delivery.customer_phone}
+                        </a>
+                      </div>
+                    </div>
+
+                    {delivery.delivery_date && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        <div className="flex-1">
+                          <div className="text-xs text-gray-500">Delivery Date</div>
+                          <div className="font-medium text-gray-900">
+                            {new Date(delivery.delivery_date).toLocaleDateString('en-GB', { 
+                              weekday: 'short', 
+                              day: 'numeric', 
+                              month: 'short' 
+                            })}
+                            {delivery.delivery_time && ` at ${delivery.delivery_time.substring(0, 5)}`}
+                          </div>
+                        </div>
+                      </div>
                     )}
-                    {delivery.status === "On the Way" && (
+
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <Navigation className="w-5 h-5 text-purple-600" />
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-500">Location</div>
+                        <div className="font-medium text-gray-900">{delivery.location}</div>
+                      </div>
                       <Button
-                        onClick={() => updateStatus(delivery.id, "Delivered")}
-                        className="flex-1 bg-green-600 hover:bg-green-700"
                         size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(delivery.location)}`, '_blank');
+                        }}
+                        className="text-purple-600 border-purple-600 hover:bg-purple-50"
                       >
-                        Mark as Delivered
+                        Navigate
                       </Button>
+                    </div>
+
+                    {/* Action Buttons */}
+                    {delivery.status !== "Delivered" && (
+                      <div className="flex gap-2 pt-2">
+                        {(delivery.status === "Scheduled" || delivery.status === "Pending") && (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateStatus(delivery.id, "On the Way");
+                            }}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                            size="lg"
+                          >
+                            <Truck className="w-4 h-4 mr-2" />
+                            Start Delivery
+                          </Button>
+                        )}
+                        {delivery.status === "On the Way" && (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateStatus(delivery.id, "Delivered");
+                            }}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white shadow-md"
+                            size="lg"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Mark as Delivered
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
-                
-                {delivery.status === "Delivered" && (
-                  <div className="text-center text-sm text-green-600 font-medium">
-                    ✓ Completed
+
+                {/* Collapsed Status Indicator */}
+                {selectedDelivery?.id !== delivery.id && delivery.status !== "Delivered" && (
+                  <div className="text-xs text-gray-500 mt-2">
+                    Tap to {delivery.status === "On the Way" ? "complete" : "start"} delivery
                   </div>
                 )}
               </CardContent>
             </Card>
-          ))}
-        </div>
+          ))
+        )}
       </div>
     </div>
   );
