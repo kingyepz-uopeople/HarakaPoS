@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS stock (
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   quantity_kg DECIMAL(10, 2) NOT NULL CHECK (quantity_kg > 0),
   source TEXT NOT NULL,
+  total_cost DECIMAL(10, 2) NOT NULL CHECK (total_cost >= 0),
+  cost_per_kg DECIMAL(10, 2) GENERATED ALWAYS AS (total_cost / NULLIF(quantity_kg, 0)) STORED,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -69,7 +71,14 @@ CREATE TABLE IF NOT EXISTS sales (
   payment_method TEXT NOT NULL CHECK (payment_method IN ('Cash', 'M-Pesa')),
   quantity_sold DECIMAL(10, 2) NOT NULL CHECK (quantity_sold > 0),
   driver_id UUID REFERENCES users(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  customer_name TEXT NOT NULL,
+  customer_phone TEXT,
+  delivery_status TEXT NOT NULL DEFAULT 'Pending' CHECK (delivery_status IN ('Pending', 'On the Way', 'Delivered')),
+  delivery_location TEXT,
+  price_per_kg DECIMAL(10, 2) GENERATED ALWAYS AS (amount / NULLIF(quantity_sold, 0)) STORED,
+  profit DECIMAL(10, 2) DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- RLS Policies for sales table
@@ -82,6 +91,10 @@ CREATE POLICY "Authenticated users can view sales" ON sales
 -- Allow authenticated users to insert sales
 CREATE POLICY "Authenticated users can insert sales" ON sales
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- Allow authenticated users to update sales (for delivery status)
+CREATE POLICY "Authenticated users can update sales" ON sales
+  FOR UPDATE USING (auth.role() = 'authenticated');
 
 -- ============================================
 -- DELIVERIES TABLE

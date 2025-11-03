@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/utils/formatCurrency";
-import { ShoppingCart, Package, Truck, TrendingUp } from "lucide-react";
+import { ShoppingCart, Package, Truck, TrendingUp, DollarSign, TrendingDown } from "lucide-react";
 
 /**
  * Admin Dashboard Home Page
@@ -23,9 +23,11 @@ async function getDashboardStats() {
   // Get current stock
   const { data: stock, error: stockError } = await supabase
     .from("stock")
-    .select("quantity_kg");
+    .select("quantity_kg, total_cost");
 
   const totalStock = stock?.reduce((sum, item) => sum + item.quantity_kg, 0) || 0;
+  const totalStockCost = stock?.reduce((sum, item) => sum + (item.total_cost || 0), 0) || 0;
+  const avgCostPerKg = totalStock > 0 ? totalStockCost / totalStock : 0;
 
   // Get sales data (deduct from stock)
   const { data: sales, error: salesStockError } = await supabase
@@ -58,6 +60,8 @@ async function getDashboardStats() {
     remainingStock,
     pendingDeliveries: pendingDeliveries || 0,
     monthTotal,
+    totalStockCost,
+    avgCostPerKg,
   };
 }
 
@@ -93,6 +97,20 @@ export default async function DashboardPage() {
       icon: TrendingUp,
       color: "text-purple-600",
     },
+    {
+      title: "Total Stock Cost",
+      value: formatCurrency(stats.totalStockCost),
+      description: "All stock purchased",
+      icon: DollarSign,
+      color: "text-red-600",
+    },
+    {
+      title: "Avg Cost per Kg",
+      value: formatCurrency(stats.avgCostPerKg),
+      description: "Average stock cost",
+      icon: TrendingDown,
+      color: "text-gray-600",
+    },
   ];
 
   return (
@@ -102,7 +120,7 @@ export default async function DashboardPage() {
         <p className="text-gray-500">Welcome to HarakaPOS Admin Panel</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => {
           const Icon = card.icon;
           return (

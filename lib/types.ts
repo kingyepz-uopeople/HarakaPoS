@@ -22,6 +22,8 @@ export interface Stock {
   date: string;
   quantity_kg: number;
   source: string;
+  total_cost: number;
+  cost_per_kg?: number; // Generated column, optional on insert
   created_at?: string;
 }
 
@@ -32,7 +34,14 @@ export interface Sale {
   payment_method: PaymentMethod;
   quantity_sold: number;
   driver_id?: string;
+  customer_name: string;
+  customer_phone?: string;
+  delivery_status: DeliveryStatus;
+  delivery_location?: string;
+  price_per_kg?: number; // Generated column, optional on insert
+  profit?: number;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface Delivery {
