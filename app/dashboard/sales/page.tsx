@@ -255,32 +255,52 @@ export default function SalesPage() {
         saleData.order_id = selectedOrder;
       }
 
+      console.log('Attempting to insert sale with data:', saleData);
+
       const { error: insertError } = await supabase
         .from('sales')
         .insert([saleData]);
 
       if (insertError) {
-        console.error('Insert error details:', insertError);
+        // Extract all possible error information
+        const errorInfo = {
+          message: insertError.message || 'No message',
+          details: insertError.details || 'No details',
+          hint: insertError.hint || 'No hint',
+          code: insertError.code || 'No code'
+        };
+        console.error('Insert error:', errorInfo);
+        alert(`Insert error: ${errorInfo.message}\nDetails: ${errorInfo.details}\nCode: ${errorInfo.code}`);
         
-        // If columns don't exist, retry without them
-        if (insertError.message?.includes('order_id') || 
-            insertError.message?.includes('delivery_location') || 
-            insertError.code === '42703') {
-          console.warn('Some columns not found, retrying with basic fields...');
+        // If new columns don't exist, try with old schema (amount instead of total_amount, etc.)
+        if (insertError.code === '42703' || insertError.message?.includes('column')) {
+          console.warn('New columns not found, retrying with old schema...');
           
-          // Remove fields that might not exist
-          delete saleData.order_id;
-          delete saleData.delivery_location;
+          // Map to old schema
+          const oldSchemaSale: any = {
+            date: saleData.date,
+            quantity_sold: saleData.quantity_sold,
+            amount: saleData.total_amount, // Old schema uses 'amount' not 'total_amount'
+            payment_method: saleData.payment_method,
+          };
           
           const { error: retryError } = await supabase
             .from('sales')
-            .insert([saleData]);
+            .insert([oldSchemaSale]);
             
           if (retryError) {
-            throw new Error(retryError.message || retryError.details || 'Failed to insert sale');
+            const retryErrorInfo = {
+              message: retryError.message || 'No message',
+              details: retryError.details || 'No details',
+              hint: retryError.hint || 'No hint',
+              code: retryError.code || 'No code'
+            };
+            console.error('Retry error:', retryErrorInfo);
+            alert(`Retry error: ${retryErrorInfo.message}\nDetails: ${retryErrorInfo.details}\nCode: ${retryErrorInfo.code}`);
+            throw new Error(`Failed to insert sale: ${retryErrorInfo.message}`);
           }
         } else {
-          throw new Error(insertError.message || insertError.details || 'Failed to insert sale');
+          throw new Error(`Failed to insert sale: ${errorInfo.message}`);
         }
       }
 
