@@ -55,18 +55,20 @@ export default function SalesPage() {
     try {
       setLoading(true);
 
-      // Fetch sales with related data
+      // Fetch sales with related data (order join is optional if migration not applied yet)
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
         .select(`
           *,
           customer:customers(*),
-          driver:users(*),
-          order:orders(*, customer:customers(*))
+          driver:users(*)
         `)
         .order('date', { ascending: false });
 
-      if (salesError) throw salesError;
+      if (salesError) {
+        console.error('Sales fetch error:', salesError);
+        throw salesError;
+      }
       setSales(salesData || []);
 
       // Calculate stats
@@ -83,8 +85,12 @@ export default function SalesPage() {
         .in('delivery_status', ['Pending', 'On the Way'])
         .order('delivery_date', { ascending: true });
 
-      if (ordersError) throw ordersError;
-      setOrders(ordersData || []);
+      if (ordersError) {
+        console.error('Orders fetch error:', ordersError);
+        // Don't throw - orders are optional
+      } else {
+        setOrders(ordersData || []);
+      }
 
       // Fetch customers (for walk-in sales)
       const { data: customersData, error: customersError } = await supabase
@@ -92,7 +98,10 @@ export default function SalesPage() {
         .select('*')
         .order('name', { ascending: true });
 
-      if (customersError) throw customersError;
+      if (customersError) {
+        console.error('Customers fetch error:', customersError);
+        throw customersError;
+      }
       setCustomers(customersData || []);
 
       // Fetch settings (for default price)
@@ -102,7 +111,10 @@ export default function SalesPage() {
         .eq('key', 'price_per_kg')
         .single();
 
-      if (settingsError) console.error('Settings error:', settingsError);
+      if (settingsError) {
+        console.error('Settings fetch error:', settingsError);
+        // Don't throw - will use default price
+      }
       if (settingsData && settingsData.value) {
         const price = parseFloat(settingsData.value);
         if (!isNaN(price)) {
@@ -112,7 +124,7 @@ export default function SalesPage() {
 
     } catch (err: any) {
       console.error('Error fetching data:', err);
-      setError(err.message);
+      setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -266,6 +278,28 @@ export default function SalesPage() {
 
   return (
     <div className="p-6">
+      {/* Error Display */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2 text-red-800">
+            <AlertCircle className="w-5 h-5" />
+            <div>
+              <p className="font-medium">Error loading data</p>
+              <p className="text-sm mt-1">{error}</p>
+              <button
+                onClick={() => {
+                  setError('');
+                  fetchData();
+                }}
+                className="mt-2 text-sm text-red-600 hover:text-red-700 underline"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
