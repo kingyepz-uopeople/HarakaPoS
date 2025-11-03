@@ -5,9 +5,11 @@
 
 export type UserRole = "admin" | "driver";
 
-export type PaymentMethod = "Cash" | "M-Pesa";
+export type PaymentMethod = "Cash" | "M-Pesa" | "Bank Transfer" | "Credit Card";
 
 export type DeliveryStatus = "Pending" | "On the Way" | "Delivered";
+
+export type OrderStatus = "Scheduled" | "Pending" | "On the Way" | "Delivered" | "Cancelled";
 
 export interface User {
   id: string;
@@ -56,6 +58,30 @@ export interface Delivery {
   updated_at?: string;
 }
 
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  location?: string;
+  created_at?: string;
+}
+
+export interface Order {
+  id: string;
+  customer_id: string;
+  quantity_kg: number;
+  price_per_kg: number;
+  total_price?: number; // Generated column, optional on insert
+  payment_mode: PaymentMethod;
+  delivery_status: OrderStatus;
+  delivery_date: string; // DATE format: YYYY-MM-DD
+  delivery_time?: string; // TIME format: HH:MM:SS
+  delivery_notes?: string;
+  assigned_driver?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Settings {
   id: string;
   key: string;
@@ -85,5 +111,10 @@ export interface DeliveryWithDetails extends Delivery {
 
 export interface SaleWithDelivery extends Sale {
   delivery?: Delivery;
+  driver?: User;
+}
+
+export interface OrderWithDetails extends Order {
+  customer?: Customer;
   driver?: User;
 }
