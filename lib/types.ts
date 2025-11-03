@@ -32,15 +32,17 @@ export interface Stock {
 export interface Sale {
   id: string;
   date: string;
-  amount: number;
-  payment_method: PaymentMethod;
-  quantity_sold: number;
-  driver_id?: string;
-  customer_name: string;
+  customer_id?: string;
+  customer_name?: string; // Kept for backwards compatibility
   customer_phone?: string;
+  quantity_sold: number;
+  price_per_kg: number;
+  total_amount: number;
+  amount: number; // Deprecated, kept for backwards compatibility
+  payment_method: PaymentMethod;
+  driver_id?: string;
   delivery_status: DeliveryStatus;
   delivery_location?: string;
-  price_per_kg?: number; // Generated column, optional on insert
   profit?: number;
   created_at?: string;
   updated_at?: string;
@@ -112,6 +114,7 @@ export interface DeliveryWithDetails extends Delivery {
 export interface SaleWithDelivery extends Sale {
   delivery?: Delivery;
   driver?: User;
+  customer?: Customer;
 }
 
 export interface OrderWithDetails extends Order {

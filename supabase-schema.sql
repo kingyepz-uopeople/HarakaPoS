@@ -67,15 +67,17 @@ CREATE POLICY "Authenticated users can insert stock" ON stock
 CREATE TABLE IF NOT EXISTS sales (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   date DATE NOT NULL DEFAULT CURRENT_DATE,
-  amount DECIMAL(10, 2) NOT NULL CHECK (amount > 0),
-  payment_method TEXT NOT NULL CHECK (payment_method IN ('Cash', 'M-Pesa')),
-  quantity_sold DECIMAL(10, 2) NOT NULL CHECK (quantity_sold > 0),
-  driver_id UUID REFERENCES users(id) ON DELETE SET NULL,
-  customer_name TEXT NOT NULL,
+  customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
+  customer_name TEXT, -- Kept for historical records, nullable
   customer_phone TEXT,
+  quantity_sold DECIMAL(10, 2) NOT NULL CHECK (quantity_sold > 0),
+  price_per_kg DECIMAL(10, 2) NOT NULL CHECK (price_per_kg >= 0),
+  total_amount DECIMAL(10, 2) NOT NULL CHECK (total_amount > 0),
+  amount DECIMAL(10, 2) NOT NULL CHECK (amount > 0), -- Deprecated, kept for backwards compatibility
+  payment_method TEXT NOT NULL CHECK (payment_method IN ('Cash', 'M-Pesa', 'Bank Transfer', 'Credit Card')),
+  driver_id UUID REFERENCES users(id) ON DELETE SET NULL,
   delivery_status TEXT NOT NULL DEFAULT 'Pending' CHECK (delivery_status IN ('Pending', 'On the Way', 'Delivered')),
   delivery_location TEXT,
-  price_per_kg DECIMAL(10, 2) GENERATED ALWAYS AS (amount / NULLIF(quantity_sold, 0)) STORED,
   profit DECIMAL(10, 2) DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -95,6 +97,9 @@ CREATE POLICY "Authenticated users can insert sales" ON sales
 -- Allow authenticated users to update sales (for delivery status)
 CREATE POLICY "Authenticated users can update sales" ON sales
   FOR UPDATE USING (auth.role() = 'authenticated');
+
+-- Index for customer_id
+CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
 
 -- ============================================
 -- DELIVERIES TABLE
@@ -270,6 +275,43 @@ CREATE TRIGGER update_sales_updated_at BEFORE UPDATE ON sales
 
 CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Function to reduce stock when sale is recorded
+CREATE OR REPLACE FUNCTION reduce_stock_on_sale()
+RETURNS TRIGGER AS $$
+DECLARE
+  latest_stock_id UUID;
+  current_stock DECIMAL(10, 2);
+BEGIN
+  -- Get the latest stock entry
+  SELECT id, quantity_kg INTO latest_stock_id, current_stock
+  FROM stock
+  ORDER BY date DESC, created_at DESC
+  LIMIT 1;
+
+  -- Check if we have enough stock
+  IF current_stock IS NULL THEN
+    RAISE EXCEPTION 'No stock records found. Please add stock first.';
+  END IF;
+
+  IF current_stock < NEW.quantity_sold THEN
+    RAISE EXCEPTION 'Insufficient stock. Available: % kg, Requested: % kg', current_stock, NEW.quantity_sold;
+  END IF;
+
+  -- Reduce stock
+  UPDATE stock
+  SET quantity_kg = quantity_kg - NEW.quantity_sold
+  WHERE id = latest_stock_id;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to automatically reduce stock on sale insert
+CREATE TRIGGER trigger_reduce_stock_on_sale
+  BEFORE INSERT ON sales
+  FOR EACH ROW
+  EXECUTE FUNCTION reduce_stock_on_sale();
 
 -- ============================================
 -- SAMPLE DATA FOR CUSTOMERS (Optional)
