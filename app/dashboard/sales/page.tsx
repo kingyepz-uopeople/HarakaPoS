@@ -230,30 +230,30 @@ export default function SalesPage() {
         throw new Error('Please select a customer');
       }
 
-      // Insert sale - only include fields that exist in current schema
+      // Insert sale - Check if migration columns exist
       const saleData: any = {
         date: new Date().toISOString(),
-        customer_id: formData.customer_id,
         quantity_sold: formData.quantity_sold,
-        price_per_kg: formData.price_per_kg,
         total_amount: formData.total_amount,
         payment_method: formData.payment_method,
       };
 
-      // Add optional fields that may not exist yet
-      if (formData.delivery_location) {
-        saleData.delivery_location = formData.delivery_location;
+      // Add customer_id if provided (migration column)
+      if (formData.customer_id) {
+        saleData.customer_id = formData.customer_id;
       }
 
-      // Copy driver assignment from order
-      if (formData.driver_id) {
-        saleData.driver_id = formData.driver_id;
+      // Add price_per_kg if provided (migration column)
+      if (formData.price_per_kg) {
+        saleData.price_per_kg = formData.price_per_kg;
       }
 
-      // Only add order_id if migration has been applied
-      if (saleType === 'order' && selectedOrder) {
-        saleData.order_id = selectedOrder;
-      }
+      // Log for debugging
+      console.log('Form data:', formData);
+      console.log('Sale data to insert:', saleData);
+
+      // New columns (delivery_location, driver_id, order_id)
+      // will be fully available after migration is applied
 
       console.log('Attempting to insert sale with data:', saleData);
 
@@ -262,46 +262,23 @@ export default function SalesPage() {
         .insert([saleData]);
 
       if (insertError) {
-        // Extract all possible error information
+        // Log the raw error object
+        console.error('Raw error object:', insertError);
+        console.error('Error keys:', Object.keys(insertError));
+        console.error('Error values:', Object.values(insertError));
+        
+        // Try to extract error info in multiple ways
         const errorInfo = {
           message: insertError.message || 'No message',
           details: insertError.details || 'No details',
           hint: insertError.hint || 'No hint',
-          code: insertError.code || 'No code'
+          code: insertError.code || 'No code',
+          statusCode: (insertError as any).statusCode || 'No status code'
         };
-        console.error('Insert error:', errorInfo);
-        alert(`Insert error: ${errorInfo.message}\nDetails: ${errorInfo.details}\nCode: ${errorInfo.code}`);
         
-        // If new columns don't exist, try with old schema (amount instead of total_amount, etc.)
-        if (insertError.code === '42703' || insertError.message?.includes('column')) {
-          console.warn('New columns not found, retrying with old schema...');
-          
-          // Map to old schema
-          const oldSchemaSale: any = {
-            date: saleData.date,
-            quantity_sold: saleData.quantity_sold,
-            amount: saleData.total_amount, // Old schema uses 'amount' not 'total_amount'
-            payment_method: saleData.payment_method,
-          };
-          
-          const { error: retryError } = await supabase
-            .from('sales')
-            .insert([oldSchemaSale]);
-            
-          if (retryError) {
-            const retryErrorInfo = {
-              message: retryError.message || 'No message',
-              details: retryError.details || 'No details',
-              hint: retryError.hint || 'No hint',
-              code: retryError.code || 'No code'
-            };
-            console.error('Retry error:', retryErrorInfo);
-            alert(`Retry error: ${retryErrorInfo.message}\nDetails: ${retryErrorInfo.details}\nCode: ${retryErrorInfo.code}`);
-            throw new Error(`Failed to insert sale: ${retryErrorInfo.message}`);
-          }
-        } else {
-          throw new Error(`Failed to insert sale: ${errorInfo.message}`);
-        }
+        console.error('Extracted error info:', errorInfo);
+        alert(`Failed to record sale:\n${errorInfo.message}\n\nDetails: ${errorInfo.details}\nCode: ${errorInfo.code}\nStatus: ${errorInfo.statusCode}`);
+        throw new Error(`Failed to insert sale: ${errorInfo.message}`);
       }
 
       // If sale from order, mark order as Delivered
