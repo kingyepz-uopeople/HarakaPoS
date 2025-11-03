@@ -6,25 +6,54 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { formatDate } from "@/utils/formatDate";
-import { LogOut, Package, MapPin, Phone, User } from "lucide-react";
+import { LogOut, Package, MapPin, Phone, User, AlertCircle } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
+import { useRouter } from "next/navigation";
 
 /**
  * Driver Dashboard Page
  * Mobile-friendly interface for drivers to view and update deliveries
+ * ROLE: driver only
  */
 
 export default function DriverPage() {
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
+  const [authorized, setAuthorized] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
-    loadDeliveries();
-    loadUserInfo();
+    checkRole();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function checkRole() {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    // Check if user has driver role
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role, name")
+      .eq("id", user.id)
+      .single();
+    
+    if (userData?.role !== "driver") {
+      setAuthorized(false);
+      setLoading(false);
+      return;
+    }
+
+    setAuthorized(true);
+    setUserName(userData.name);
+    loadDeliveries();
+  }
 
   async function loadUserInfo() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -45,8 +74,21 @@ export default function DriverPage() {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      // Fetch orders assigned to this driver
-      const { data } = await supabase
+      // Get the driver's name from users table
+      const { data: userData } = await supabase
+        .from("users")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+      
+      if (!userData?.name) {
+        console.error("Driver name not found");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch orders assigned to this driver by name
+      const { data, error } = await supabase
         .from("orders")
         .select(`
           id,
@@ -57,6 +99,7 @@ export default function DriverPage() {
           created_at,
           updated_at,
           customer_id,
+          assigned_driver,
           customers!inner(
             id,
             name,
@@ -64,9 +107,13 @@ export default function DriverPage() {
             location
           )
         `)
-        .eq("driver_id", user.id)
+        .eq("assigned_driver", userData.name)
         .in("delivery_status", ["Scheduled", "Pending", "On the Way", "Delivered"])
         .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching deliveries:", error);
+      }
 
       if (data) {
         // Transform orders to match the expected delivery structure
@@ -121,6 +168,51 @@ export default function DriverPage() {
   }
 
   const pendingCount = deliveries.filter(d => d.status !== "Delivered").length;
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show unauthorized access message
+  if (!authorized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+            <p className="text-gray-600 mb-6">
+              This page is only accessible to users with the driver role.
+            </p>
+            <div className="space-y-2">
+              <Button
+                onClick={() => router.push("/dashboard")}
+                className="w-full"
+              >
+                Go to Dashboard
+              </Button>
+              <form action={signOut} className="w-full">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="w-full"
+                >
+                  Sign Out
+                </Button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
