@@ -102,21 +102,58 @@ export default function OrdersPage() {
   const handleAddOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.from("orders").insert([
-        {
-          customer_id: formData.customer_id,
-          quantity_kg: parseFloat(formData.quantity_kg),
-          price_per_kg: parseFloat(formData.price_per_kg),
-          payment_mode: formData.payment_mode,
-          delivery_status: formData.delivery_status,
-          delivery_date: formData.delivery_date,
-          delivery_time: formData.delivery_time || null,
-          delivery_notes: formData.delivery_notes || null,
-          assigned_driver: formData.assigned_driver || null,
-        },
-      ]);
+      // Validate required fields
+      if (!formData.customer_id) {
+        alert("Please select a customer");
+        return;
+      }
+      if (!formData.quantity_kg || parseFloat(formData.quantity_kg) <= 0) {
+        alert("Please enter a valid quantity");
+        return;
+      }
+      if (!formData.delivery_date) {
+        alert("Please select a delivery date");
+        return;
+      }
 
-      if (error) throw error;
+      // Prepare the order data
+      // Get current user for updated_by field
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const orderData = {
+        customer_id: formData.customer_id,
+        quantity_kg: parseFloat(formData.quantity_kg),
+        price_per_kg: parseFloat(formData.price_per_kg),
+        payment_mode: formData.payment_mode,
+        delivery_status: formData.delivery_status,
+        delivery_date: formData.delivery_date,
+        delivery_time: formData.delivery_time || null,
+        delivery_notes: formData.delivery_notes || null,
+        assigned_driver: formData.assigned_driver || null,
+        updated_by: user?.id || null, // Track who created the order
+      };
+
+      console.log("Attempting to insert order:", orderData);
+
+      const { data, error } = await supabase.from("orders").insert([orderData]).select();
+
+      if (error) {
+        // Log full error object as string to see everything
+        console.error("Supabase error (full):", JSON.stringify(error, null, 2));
+        console.error("Supabase error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          // Also check these alternative properties
+          statusCode: (error as any).statusCode,
+          status: (error as any).status,
+        });
+        
+        const errorMsg = error.message || error.hint || "Unknown database error";
+        alert(`Failed to add order: ${errorMsg}`);
+        return;
+      }
 
       // Reset form and close modal
       setFormData({
@@ -132,9 +169,24 @@ export default function OrdersPage() {
       });
       setShowAddModal(false);
       fetchOrders();
-    } catch (error) {
-      console.error("Error adding order:", error);
-      alert("Failed to add order. Please try again.");
+      alert("Order added successfully!");
+    } catch (error: any) {
+      // Catch any unexpected errors
+      console.error("Unexpected error:", error);
+      console.error("Error type:", typeof error);
+      console.error("Error keys:", Object.keys(error));
+      
+      // Try to extract message from various error formats
+      let errorMessage = "Unknown error";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.toString) {
+        errorMessage = error.toString();
+      }
+      
+      alert(`Failed to add order: ${errorMessage}. Please try again.`);
     }
   };
 
