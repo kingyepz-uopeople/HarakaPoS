@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
+import PDAPaymentFlow from "@/components/PDAPaymentFlow";
 import {
   MapPin,
   Phone,
@@ -317,13 +318,16 @@ export default function DeliveryDetailsPage() {
         )}
 
         {delivery.delivery_status === "Out for Delivery" && (
-          <button
-            onClick={() => setShowPaymentModal(true)}
-            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 py-4 px-4 rounded-xl text-base font-semibold transition-colors flex items-center justify-center space-x-2"
-          >
-            <CheckCircle2 className="w-5 h-5" />
-            <span>Complete Delivery</span>
-          </button>
+          <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
+            <PDAPaymentFlow
+              orderId={delivery.id}
+              amount={delivery.total_price || (delivery.quantity_kg * delivery.price_per_kg)}
+              customerName={delivery.customer_name}
+              onComplete={() => {
+                router.push("/driver/deliveries");
+              }}
+            />
+          </div>
         )}
       </div>
 
