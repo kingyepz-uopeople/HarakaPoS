@@ -66,6 +66,7 @@ export default function TestDBPage() {
         payment_mode: "Cash",
         delivery_status: "Pending",
         delivery_date: new Date().toISOString().split('T')[0],
+        updated_by: user?.id || null, // Include the user who's creating the order
       };
 
       setResult(prev => prev + `Inserting test order: ${JSON.stringify(testOrder, null, 2)}\n\n`);

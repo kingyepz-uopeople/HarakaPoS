@@ -1,32 +1,21 @@
 -- =====================================================
--- COMPLETE FIX: Add updated_by column to orders table
--- This fixes the "record new has no field updated_by" error
+-- ✅ QUICK FIX: Add updated_by column to orders table
+-- Copy this line and run it in Supabase SQL Editor
 -- =====================================================
 
--- Step 1: Add the missing updated_by column
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id);
 
--- Step 2: Set a default value for existing records (optional - use current user or null)
-UPDATE orders SET updated_by = NULL WHERE updated_by IS NULL;
+-- =====================================================
+-- That's it! Your orders will now work. Test by:
+-- 1. Going to http://localhost:3000/test-db and clicking "Run Test"
+-- 2. OR adding an order in the Orders page
+-- =====================================================
 
--- Step 3: Verify the column was added
+-- VERIFICATION (Optional): Check the column was added
 SELECT column_name, data_type, is_nullable
 FROM information_schema.columns
 WHERE table_name = 'orders' AND column_name = 'updated_by';
 
--- Step 4: Test that the trigger now works
--- You should now be able to insert orders without errors!
-
--- =====================================================
--- VERIFICATION: Check the trigger is working
--- =====================================================
-SELECT 
-  trigger_name,
-  event_manipulation,
-  action_statement,
-  action_timing
-FROM information_schema.triggers
-WHERE event_object_table = 'orders'
-  AND trigger_name = 'trigger_log_order_status';
-
--- This should show the trigger that logs status changes
+-- You should see:
+-- column_name | data_type | is_nullable
+-- updated_by  | uuid      | YES

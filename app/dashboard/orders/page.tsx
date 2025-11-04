@@ -192,9 +192,15 @@ export default function OrdersPage() {
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
+      // Get current user for updated_by field
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { error } = await supabase
         .from("orders")
-        .update({ delivery_status: newStatus })
+        .update({ 
+          delivery_status: newStatus,
+          updated_by: user?.id || null, // Track who updated the order
+        })
         .eq("id", orderId);
 
       if (error) throw error;
