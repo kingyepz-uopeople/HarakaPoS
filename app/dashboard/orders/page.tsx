@@ -178,11 +178,12 @@ export default function OrdersPage() {
   const stats = {
     scheduled: orders.filter((o) => o.delivery_status === "Scheduled").length,
     pending: orders.filter((o) => o.delivery_status === "Pending").length,
-    onTheWay: orders.filter((o) => o.delivery_status === "On the Way").length,
+    outForDelivery: orders.filter((o) => o.delivery_status === "Out for Delivery").length,
     delivered: orders.filter((o) => o.delivery_status === "Delivered").length,
+    completed: orders.filter((o) => o.delivery_status === "Completed").length,
     cancelled: orders.filter((o) => o.delivery_status === "Cancelled").length,
     totalRevenue: orders
-      .filter((o) => o.delivery_status === "Delivered")
+      .filter((o) => o.delivery_status === "Completed" || o.delivery_status === "Delivered")
       .reduce((sum, o) => sum + (o.total_price || 0), 0),
   };
 
@@ -208,17 +209,17 @@ export default function OrdersPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
         <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+          <div className="p-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <Calendar className="h-6 w-6 text-gray-400" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Scheduled</dt>
-                  <dd className="text-lg font-medium text-gray-900">{stats.scheduled}</dd>
+                  <dt className="text-xs font-medium text-gray-500 truncate">Scheduled</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{stats.scheduled}</dd>
                 </dl>
               </div>
             </div>
@@ -226,15 +227,15 @@ export default function OrdersPage() {
         </div>
 
         <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+          <div className="p-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <Package className="h-6 w-6 text-yellow-400" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Pending</dt>
-                  <dd className="text-lg font-medium text-gray-900">{stats.pending}</dd>
+                  <dt className="text-xs font-medium text-gray-500 truncate">Pending</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{stats.pending}</dd>
                 </dl>
               </div>
             </div>
@@ -242,15 +243,15 @@ export default function OrdersPage() {
         </div>
 
         <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+          <div className="p-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <Truck className="h-6 w-6 text-blue-400" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">On the Way</dt>
-                  <dd className="text-lg font-medium text-gray-900">{stats.onTheWay}</dd>
+                  <dt className="text-xs font-medium text-gray-500 truncate">Out for Delivery</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{stats.outForDelivery}</dd>
                 </dl>
               </div>
             </div>
@@ -258,15 +259,15 @@ export default function OrdersPage() {
         </div>
 
         <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+          <div className="p-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <Package className="h-6 w-6 text-green-400" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Delivered</dt>
-                  <dd className="text-lg font-medium text-gray-900">{stats.delivered}</dd>
+                  <dt className="text-xs font-medium text-gray-500 truncate">Delivered</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{stats.delivered}</dd>
                 </dl>
               </div>
             </div>
@@ -274,15 +275,31 @@ export default function OrdersPage() {
         </div>
 
         <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+          <div className="p-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Package className="h-6 w-6 text-emerald-500" />
+              </div>
+              <div className="ml-4 w-0 flex-1">
+                <dl>
+                  <dt className="text-xs font-medium text-gray-500 truncate">Completed</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{stats.completed}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <X className="h-6 w-6 text-red-400" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Cancelled</dt>
-                  <dd className="text-lg font-medium text-gray-900">{stats.cancelled}</dd>
+                  <dt className="text-xs font-medium text-gray-500 truncate">Cancelled</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{stats.cancelled}</dd>
                 </dl>
               </div>
             </div>
@@ -290,15 +307,15 @@ export default function OrdersPage() {
         </div>
 
         <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+          <div className="p-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <DollarSign className="h-6 w-6 text-green-500" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Revenue</dt>
-                  <dd className="text-lg font-medium text-gray-900">{formatCurrency(stats.totalRevenue)}</dd>
+                  <dt className="text-xs font-medium text-gray-500 truncate">Revenue</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{formatCurrency(stats.totalRevenue)}</dd>
                 </dl>
               </div>
             </div>
@@ -312,7 +329,7 @@ export default function OrdersPage() {
         <div className="flex space-x-2 mb-4 overflow-x-auto">
           <button
             onClick={() => setSelectedTab("all")}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
               selectedTab === "all" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -320,7 +337,7 @@ export default function OrdersPage() {
           </button>
           <button
             onClick={() => setSelectedTab("Scheduled")}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
               selectedTab === "Scheduled" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -328,31 +345,39 @@ export default function OrdersPage() {
           </button>
           <button
             onClick={() => setSelectedTab("Pending")}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
               selectedTab === "Pending" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             Pending ({stats.pending})
           </button>
           <button
-            onClick={() => setSelectedTab("On the Way")}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              selectedTab === "On the Way" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            onClick={() => setSelectedTab("Out for Delivery")}
+            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
+              selectedTab === "Out for Delivery" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
-            On the Way ({stats.onTheWay})
+            Out for Delivery ({stats.outForDelivery})
           </button>
           <button
             onClick={() => setSelectedTab("Delivered")}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
               selectedTab === "Delivered" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             Delivered ({stats.delivered})
           </button>
           <button
+            onClick={() => setSelectedTab("Completed")}
+            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
+              selectedTab === "Completed" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Completed ({stats.completed})
+          </button>
+          <button
             onClick={() => setSelectedTab("Cancelled")}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
               selectedTab === "Cancelled" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -467,17 +492,20 @@ export default function OrdersPage() {
                             ? "bg-gray-100 text-gray-800"
                             : order.delivery_status === "Pending"
                             ? "bg-yellow-100 text-yellow-800"
-                            : order.delivery_status === "On the Way"
+                            : order.delivery_status === "Out for Delivery"
                             ? "bg-blue-100 text-blue-800"
                             : order.delivery_status === "Delivered"
                             ? "bg-green-100 text-green-800"
+                            : order.delivery_status === "Completed"
+                            ? "bg-emerald-100 text-emerald-800"
                             : "bg-red-100 text-red-800"
                         }`}
                       >
                         <option value="Scheduled">Scheduled</option>
                         <option value="Pending">Pending</option>
-                        <option value="On the Way">On the Way</option>
+                        <option value="Out for Delivery">Out for Delivery</option>
                         <option value="Delivered">Delivered</option>
+                        <option value="Completed">Completed</option>
                         <option value="Cancelled">Cancelled</option>
                       </select>
                     </td>
@@ -581,8 +609,9 @@ export default function OrdersPage() {
                     >
                       <option value="Scheduled">Scheduled</option>
                       <option value="Pending">Pending</option>
-                      <option value="On the Way">On the Way</option>
+                      <option value="Out for Delivery">Out for Delivery</option>
                       <option value="Delivered">Delivered</option>
+                      <option value="Completed">Completed</option>
                       <option value="Cancelled">Cancelled</option>
                     </select>
                   </div>

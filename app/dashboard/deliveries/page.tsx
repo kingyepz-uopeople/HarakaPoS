@@ -31,7 +31,7 @@ export default function DeliveriesPage() {
     try {
       setLoading(true);
 
-      // Load orders that need delivery (Scheduled, Pending, On the Way)
+      // Load orders that need delivery (Scheduled, Pending, Out for Delivery)
       const { data: ordersData, error: ordersError } = await supabase
         .from("orders")
         .select(`
@@ -39,7 +39,7 @@ export default function DeliveriesPage() {
           customer:customers(*),
           driver:users(*)
         `)
-        .in("delivery_status", ["Scheduled", "Pending", "On the Way"])
+        .in("delivery_status", ["Scheduled", "Pending", "Out for Delivery"])
         .order("delivery_date", { ascending: true })
         .order("delivery_time", { ascending: true });
 
@@ -109,7 +109,7 @@ export default function DeliveriesPage() {
   const stats = {
     scheduled: orders.filter(o => o.delivery_status === "Scheduled").length,
     pending: orders.filter(o => o.delivery_status === "Pending").length,
-    onTheWay: orders.filter(o => o.delivery_status === "On the Way").length,
+    outForDelivery: orders.filter(o => o.delivery_status === "Out for Delivery").length,
   };
 
   if (loading) {
@@ -159,8 +159,8 @@ export default function DeliveriesPage() {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">On the Way</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.onTheWay}</p>
+              <p className="text-sm text-gray-500">Out for Delivery</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.outForDelivery}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
               <Truck className="w-6 h-6 text-green-600" />
@@ -202,7 +202,7 @@ export default function DeliveriesPage() {
               <option value="all">All Statuses</option>
               <option value="Scheduled">Scheduled</option>
               <option value="Pending">Pending</option>
-              <option value="On the Way">On the Way</option>
+              <option value="Out for Delivery">Out for Delivery</option>
             </select>
           </div>
         </div>
@@ -294,15 +294,16 @@ export default function DeliveriesPage() {
                         className={`px-2 py-1 rounded text-xs font-medium border ${
                           order.delivery_status === "Scheduled"
                             ? "bg-blue-100 text-blue-700 border-blue-200"
-                            : order.delivery_status === "On the Way"
+                            : order.delivery_status === "Out for Delivery"
                             ? "bg-green-100 text-green-700 border-green-200"
                             : "bg-yellow-100 text-yellow-700 border-yellow-200"
                         }`}
                       >
                         <option value="Scheduled">Scheduled</option>
                         <option value="Pending">Pending</option>
-                        <option value="On the Way">On the Way</option>
+                        <option value="Out for Delivery">Out for Delivery</option>
                         <option value="Delivered">Delivered</option>
+                        <option value="Completed">Completed</option>
                       </select>
                     </td>
                     <td className="px-6 py-4">

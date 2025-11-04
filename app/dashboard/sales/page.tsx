@@ -86,7 +86,7 @@ export default function SalesPage() {
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*, customer:customers(*)')
-        .in('delivery_status', ['Pending', 'Scheduled', 'On the Way'])
+        .in('delivery_status', ['Pending', 'Scheduled', 'Out for Delivery'])
         .order('delivery_date', { ascending: true });
 
       if (ordersError) {

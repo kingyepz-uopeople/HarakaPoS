@@ -9,7 +9,13 @@ export type PaymentMethod = "Cash" | "M-Pesa" | "Bank Transfer" | "Credit Card";
 
 export type DeliveryStatus = "Pending" | "On the Way" | "Delivered";
 
-export type OrderStatus = "Scheduled" | "Pending" | "On the Way" | "Delivered" | "Cancelled";
+export type OrderStatus = 
+  | "Scheduled"        // Order confirmed, driver assigned
+  | "Pending"          // Ready for pickup
+  | "Out for Delivery" // Driver en route
+  | "Delivered"        // At customer location
+  | "Completed"        // Payment confirmed, closed
+  | "Cancelled";       // Order cancelled
 
 export interface User {
   id: string;
@@ -117,6 +123,40 @@ export interface SaleWithDelivery extends Sale {
   driver?: User;
   customer?: Customer;
   order?: Order; // Linked order if sale came from pre-order
+}
+
+// Dispatch System Types
+
+export interface OrderStatusLog {
+  id: string;
+  order_id: string;
+  status: OrderStatus;
+  changed_by: string; // user_id
+  changed_at: string;
+  notes?: string;
+  location_lat?: number;
+  location_lng?: number;
+}
+
+export interface DeliveryProof {
+  id: string;
+  order_id: string;
+  sale_id?: string;
+  photo_url?: string;
+  signature_url?: string;
+  delivered_at: string;
+  delivered_by: string; // driver user_id
+  customer_notes?: string;
+  payment_method: PaymentMethod;
+  payment_confirmed: boolean;
+}
+
+export interface DriverStatus {
+  driver_id: string;
+  status: 'available' | 'busy' | 'offline';
+  current_location_lat?: number;
+  current_location_lng?: number;
+  last_updated: string;
 }
 
 export interface OrderWithDetails extends Order {
