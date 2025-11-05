@@ -1,0 +1,58 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#2D7A3E" rx="80"/>
+  
+  <!-- Gradient overlay -->
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2D7A3E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1F5A2C;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Subtle shine -->
+    <radialGradient id="shine" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <rect width="512" height="512" fill="url(#grad1)" rx="80"/>
+  <circle cx="256" cy="200" r="300" fill="url(#shine)"/>
+  
+  <!-- Potato shape (simplified) -->
+  <ellipse cx="220" cy="240" rx="100" ry="85" fill="#F4E5C2" opacity="0.95"/>
+  <ellipse cx="218" cy="238" rx="95" ry="80" fill="#E8D4A8"/>
+  
+  <!-- Potato details (spots) -->
+  <ellipse cx="200" cy="225" rx="12" ry="10" fill="#D4C29A" opacity="0.6"/>
+  <ellipse cx="240" cy="245" rx="10" ry="8" fill="#D4C29A" opacity="0.6"/>
+  <ellipse cx="210" cy="255" rx="14" ry="11" fill="#D4C29A" opacity="0.6"/>
+  
+  <!-- Speed/Lightning bolt -->
+  <path d="M 300 180 L 260 260 L 300 255 L 280 320 L 360 220 L 320 225 Z" 
+        fill="#FFA500" 
+        stroke="#FF8C00" 
+        stroke-width="3"
+        opacity="0.95"/>
+  
+  <!-- Highlight on lightning -->
+  <path d="M 305 185 L 268 250 L 295 248 Z" 
+        fill="#FFD700" 
+        opacity="0.5"/>
+  
+  <!-- Text -->
+  <text x="256" y="420" 
+        font-family="Arial, sans-serif" 
+        font-size="72" 
+        font-weight="bold" 
+        fill="#FFFFFF" 
+        text-anchor="middle">HARAKA</text>
+  
+  <text x="256" y="470" 
+        font-family="Arial, sans-serif" 
+        font-size="36" 
+        font-weight="normal" 
+        fill="#FFD700" 
+        text-anchor="middle" 
+        opacity="0.9">POS</text>
+</svg>

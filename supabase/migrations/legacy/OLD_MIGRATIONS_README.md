@@ -1,593 +1,298 @@
-# 🗄️ Database Migrations Guide# 🗄️ Database Migrations Guide# Database Migrations
+# 🗄️ Database Migrations Guide# Database Migrations
 
 
 
-This folder contains all database migrations for HarakaPOS organized by category.
+SQL migration files for HarakaPOS - **Run in order!**This folder contains all database migration files for HarakaPoS.
 
 
 
-## 📂 Folder StructureSQL migration files for HarakaPOS - **Run in order!**This folder contains all database migration files for HarakaPoS.
+---## 📁 File Organization
 
 
 
-```
+## ⚡ Quick Start (5 Minutes)```
 
 migrations/
 
-├── features/                   # New feature migrations---## 📁 File Organization
+### Step 1: Access Supabase SQL Editor├── README.md (this file)
 
-│   ├── location-tracking.sql
+1. Go to **Supabase Dashboard**├── dispatch-system.sql          # Main dispatch system schema
 
-│   ├── barcode-delivery-tracking.sql
+2. Select your project└── update-old-status.sql        # Helper to migrate old statuses
 
-│   ├── business-expenses.sql
+3. Click **SQL Editor** in sidebar```
 
-│   ├── dispatch-system.sql## ⚡ Quick Start (5 Minutes)```
-
-│   ├── etims-integration.sql
-
-│   └── payments-system.sqlmigrations/
-
-│
-
-├── fixes/                      # Bug fixes & schema updates### Step 1: Access Supabase SQL Editor├── README.md (this file)
-
-│   ├── fix-status-constraint.sql
-
-│   └── update-old-status.sql1. Go to **Supabase Dashboard**├── dispatch-system.sql          # Main dispatch system schema
-
-│
-
-├── legacy/                     # Old/deprecated migrations2. Select your project└── update-old-status.sql        # Helper to migrate old statuses
-
-│
-
-├── 20251105_add_order_location_fields.sql  # Main location tracking migration3. Click **SQL Editor** in sidebar```
-
-├── [other migrations]
-
-└── README.md                   # This file4. Click **New Query**
-
-```
+4. Click **New Query**
 
 ## 🔄 Migration Naming Convention
 
----
-
 ### Step 2: Run Migrations in Order
-
-## 🚀 Quick Start
 
 Copy and paste each file's contents, then click **Run**:All migration files follow this naming pattern:
 
-### Running a Migration
-
 ```
 
-1. **Open Supabase Dashboard**
-
-   - Go to your project1. ✅ `etims-config.sql` - eTIMS configuration tabledescriptive-name.sql
-
-   - Navigate to SQL Editor
+1. ✅ `etims-config.sql` - eTIMS configuration tabledescriptive-name.sql
 
 2. ✅ `etims-invoices.sql` - eTIMS invoice tracking```
 
-2. **Copy Migration SQL**
-
-   - Choose migration from `features/` or `fixes/`3. ✅ `barcode-delivery-tracking.sql` - Barcode system
-
-   - Copy entire SQL content
+3. ✅ `barcode-delivery-tracking.sql` - Barcode system
 
 For timestamped migrations (if using a migration tool):
 
-3. **Execute in SQL Editor**
+**That's it!** Your database is ready! 🎉```
 
-   - Paste in SQL Editor**That's it!** Your database is ready! 🎉```
+YYYYMMDDHHMMSS_descriptive-name.sql
 
-   - Click "Run"
-
-   - Verify success messageYYYYMMDDHHMMSS_descriptive-name.sql
+---```
 
 
-
-4. **Verify Changes**---```
-
-   - Check table structure
-
-   - Test affected features
-
-   - Confirm no errors
 
 ## 📋 Migration FilesExample: `20251104120000_dispatch-system.sql`
 
----
 
-
-
-## 📋 Feature Migrations
 
 ### 1. etims-config.sql## 📋 Available Migrations
 
-### 📍 Location Tracking
+**Purpose:** eTIMS (KRA Tax) configuration storage
 
-**File:** `features/location-tracking.sql` or `20251105_add_order_location_fields.sql`**Purpose:** eTIMS (KRA Tax) configuration storage
+### 1. `dispatch-system.sql`
 
+**Creates:****Purpose:** Complete dispatch system infrastructure  
 
+- `etims_config` table**Created:** November 2025  
 
-**What it does:**### 1. `dispatch-system.sql`
+- Configuration fields (credentials, VAT rate, etc.)**Status:** Ready to apply  
 
-- Adds `delivery_address` (TEXT)
+- RLS policies
 
-- Adds `delivery_latitude` (DECIMAL)**Creates:****Purpose:** Complete dispatch system infrastructure  
+**What it does:**
 
-- Adds `delivery_longitude` (DECIMAL)
-
-- Creates index for location queries- `etims_config` table**Created:** November 2025  
-
-
-
-**When to run:** Before using location tracking feature- Configuration fields (credentials, VAT rate, etc.)**Status:** Ready to apply  
-
-
-
-**Documentation:** `docs/location-tracking/`- RLS policies
-
-
-
----**What it does:**
-
-
-
-### 📟 Barcode Delivery Tracking**When to run:** Before using eTIMS features- ✅ Creates `order_status_logs` table for audit trail
-
-**File:** `features/barcode-delivery-tracking.sql`
+**When to run:** Before using eTIMS features- ✅ Creates `order_status_logs` table for audit trail
 
 - ✅ Creates `delivery_proof` table for delivery confirmation
 
-**What it does:**
+**Dependencies:** None (run first)- ✅ Creates `driver_status` table for availability tracking
 
-- Creates barcode scanning tables**Dependencies:** None (run first)- ✅ Creates `driver_status` table for availability tracking
+- ✅ Adds triggers for auto-logging status changes
 
-- Adds delivery proof tracking
+**Verification:**- ✅ Adds triggers for auto-updating driver availability
 
-- Sets up PDA integration- ✅ Adds triggers for auto-logging status changes
+```sql- ✅ Creates `order_timeline` view for order history
 
+SELECT * FROM etims_config;- ✅ Sets up Row Level Security (RLS) policies
 
+```- ✅ Creates indexes for performance
 
-**When to run:** Before using PDA devices**Verification:**- ✅ Adds triggers for auto-updating driver availability
 
 
+**What to expect:** Empty table, ready for configuration**Dependencies:** Requires existing `orders`, `sales`, `customers`, `users` tables
 
-**Documentation:** `docs/pda-guides/````sql- ✅ Creates `order_timeline` view for order history
 
 
-
----SELECT * FROM etims_config;- ✅ Sets up Row Level Security (RLS) policies
-
-
-
-### 💰 Business Expenses```- ✅ Creates indexes for performance
-
-**File:** `features/business-expenses.sql`
-
-
-
-**What it does:**
-
-- Creates expense tracking tables**What to expect:** Empty table, ready for configuration**Dependencies:** Requires existing `orders`, `sales`, `customers`, `users` tables
-
-- Adds expense categories
-
-- Sets up receipt storage
-
-
-
-**When to run:** Before tracking expenses---**How to apply:**
-
-
-
-**Documentation:** `docs/expenses/````sql
-
-
-
----### 2. etims-invoices.sql-- In Supabase Dashboard → SQL Editor
-
-
-
-### 🚚 Dispatch System**Purpose:** Track eTIMS invoice submissions to KRA-- Copy and paste the entire contents of dispatch-system.sql
-
-**File:** `features/dispatch-system.sql`
-
--- Execute
-
-**What it does:**
-
-- Creates order status logs**Creates:**```
-
-- Adds driver assignment tracking
-
-- Sets up delivery proofs- `etims_invoices` table
-
-
-
-**When to run:** Before using dispatch features- Invoice tracking fields**Rollback:**
-
-
-
-**Documentation:** `docs/dispatch-system/`- Control code storage```sql
-
-
-
----- RLS policiesDROP VIEW IF EXISTS order_timeline;
-
-
-
-### 🧾 eTIMS IntegrationDROP TABLE IF EXISTS delivery_proof CASCADE;
-
-**File:** `features/etims-integration.sql`
-
-**When to run:** After etims-config.sqlDROP TABLE IF EXISTS order_status_logs CASCADE;
-
-**What it does:**
-
-- Creates tax invoice tablesDROP TABLE IF EXISTS driver_status CASCADE;
-
-- Adds KRA eTIMS fields
-
-- Sets up tax reporting**Dependencies:** DROP TRIGGER IF EXISTS trigger_log_order_status ON orders;
-
-
-
-**When to run:** Before eTIMS setup- `etims_config` table must existDROP TRIGGER IF EXISTS trigger_update_driver_status ON orders;
-
-
-
-**Documentation:** `docs/etims/`- `orders` table must existDROP FUNCTION IF EXISTS log_order_status_change();
-
-
-
----DROP FUNCTION IF EXISTS update_driver_status();
-
-
-
-### 💳 Payments System**Verification:**
-
-**File:** `features/payments-system.sql`
-
-```sql-- Remove new columns from orders table
-
-**What it does:**
-
-- Creates M-Pesa payment tablesSELECT * FROM etims_invoices LIMIT 5;ALTER TABLE orders DROP COLUMN IF EXISTS sale_id;
-
-- Adds payment tracking
-
-- Sets up transaction logs```ALTER TABLE orders DROP COLUMN IF EXISTS delivery_proof_id;
-
-
-
-**When to run:** Before M-Pesa integration```
-
-
-
-**Documentation:** `docs/mpesa-setup/`**What to expect:** Empty table, will populate when invoices are submitted
-
-
-
----### 2. `update-old-status.sql`
-
-
-
-## 🔧 Fix Migrations---**Purpose:** Migrate old "On the Way" status to new "Out for Delivery" status  
-
-
-
-### Fix Status Constraint**Created:** November 2025  
-
-**File:** `fixes/fix-status-constraint.sql`
-
-### 3. barcode-delivery-tracking.sql**Status:** Ready to apply  
-
-**What it does:** Updates order status constraints to support new statuses
-
-**Purpose:** Complete barcode delivery tracking system
-
-**When to run:** If you see status-related errors
-
-**What it does:**
-
----
-
-**Creates:**- ✅ Updates all existing orders with "On the Way" to "Out for Delivery"
-
-### Update Old Status
-
-**File:** `fixes/update-old-status.sql`- `delivery_barcodes` table - Barcode generation and storage- ✅ Verifies the update was successful
-
-
-
-**What it does:** Migrates legacy status values to new format- `barcode_scan_log` table - Every scan logged with GPS
-
-
-
-**When to run:** After fixing status constraints- `delivery_route_tracking` table - Continuous GPS route logging**Dependencies:** Should be run AFTER `dispatch-system.sql`
-
-
-
----- Functions:
-
-
-
-## ✅ Migration Checklist  - `generate_delivery_barcode()` - Auto-generate unique barcodes**How to apply:**
-
-
-
-Before running any migration:  - `log_barcode_scan()` - Log scans with GPS```sql
-
-
-
-- [ ] Backup your database  - `get_barcode_details()` - Retrieve barcode info-- In Supabase Dashboard → SQL Editor
-
-- [ ] Read the migration file comments
-
-- [ ] Check for dependencies (run order)- RLS policies for all tables-- Copy and paste the entire contents of update-old-status.sql
-
-- [ ] Verify table/column names don't conflict
-
-- [ ] Test in development first-- Execute
-
-- [ ] Have rollback plan ready
-
-**When to run:** After core schema exists```
-
-After running migration:
-
-
-
-- [ ] Verify success message
-
-- [ ] Check affected tables exist**Dependencies:****Rollback:**
-
-- [ ] Test related features
-
-- [ ] Update documentation if needed- `orders` table must exist```sql
-
-- [ ] Commit migration file to git
-
-- `customers` table must exist-- If you need to revert (unlikely)
-
----
-
-- `auth.users` table (Supabase built-in)UPDATE orders 
-
-## 🎯 Recommended Migration Order
-
-SET delivery_status = 'On the Way' 
-
-For a fresh setup, run in this order:
-
-**Verification:**WHERE delivery_status = 'Out for Delivery';
-
-1. `fixes/fix-status-constraint.sql` (if needed)
-
-2. `features/dispatch-system.sql````sql```
-
-3. `features/location-tracking.sql` or `20251105_add_order_location_fields.sql`
-
-4. `features/business-expenses.sql`-- Check tables exist
-
-5. `features/barcode-delivery-tracking.sql`
-
-6. `features/etims-integration.sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public' ## 🚀 Migration Application Order
-
-7. `features/payments-system.sql`
-
-  AND tablename LIKE '%barcode%' OR tablename LIKE '%route_tracking%';
-
----
-
-Apply migrations in this order:
-
-## 📝 Migration File Format
-
--- Check functions exist
-
-All migration files should follow this format:
-
-SELECT routine_name FROM information_schema.routines 1. **First:** `dispatch-system.sql` - Creates all tables, triggers, and views
+---**How to apply:**
 
 ```sql
 
--- Migration: [Feature Name]  WHERE routine_schema = 'public' AND routine_name LIKE '%barcode%';2. **Second:** `update-old-status.sql` - Migrates existing data
+### 2. etims-invoices.sql-- In Supabase Dashboard → SQL Editor
 
--- Description: [What this migration does]
+**Purpose:** Track eTIMS invoice submissions to KRA-- Copy and paste the entire contents of dispatch-system.sql
 
--- Date: YYYY-MM-DD
+-- Execute
 
--- Dependencies: [List any required migrations]
+**Creates:**```
 
--- Test barcode generation## ✅ Verification After Migration
+- `etims_invoices` table
 
--- Main migration code here
+- Invoice tracking fields**Rollback:**
 
-ALTER TABLE ...SELECT generate_delivery_barcode();
+- Control code storage```sql
 
-CREATE TABLE ...
+- RLS policiesDROP VIEW IF EXISTS order_timeline;
 
-CREATE INDEX ...```After applying migrations, run these checks:
+DROP TABLE IF EXISTS delivery_proof CASCADE;
 
+**When to run:** After etims-config.sqlDROP TABLE IF EXISTS order_status_logs CASCADE;
 
+DROP TABLE IF EXISTS driver_status CASCADE;
 
--- Add comments
+**Dependencies:** DROP TRIGGER IF EXISTS trigger_log_order_status ON orders;
 
-COMMENT ON COLUMN table.column IS 'Description';
+- `etims_config` table must existDROP TRIGGER IF EXISTS trigger_update_driver_status ON orders;
 
-**What to expect:**### Check Tables Created
+- `orders` table must existDROP FUNCTION IF EXISTS log_order_status_change();
 
--- Display success message
+DROP FUNCTION IF EXISTS update_driver_status();
 
-DO $$- 3 tables created```sql
+**Verification:**
 
-BEGIN
+```sql-- Remove new columns from orders table
 
-  RAISE NOTICE 'Migration completed successfully!';- 3 functions availableSELECT table_name 
+SELECT * FROM etims_invoices LIMIT 5;ALTER TABLE orders DROP COLUMN IF EXISTS sale_id;
 
-END $$;
-
-```- Sample barcode: `HWS-20251105-0001`FROM information_schema.tables 
-
-
-
----WHERE table_schema = 'public' 
-
-
-
-## 🚨 Troubleshooting---  AND table_name IN ('order_status_logs', 'delivery_proof', 'driver_status')
-
-
-
-### Error: "column already exists"ORDER BY table_name;
-
-- Migration was already run
-
-- Check if feature is already set up## 🎯 Complete Migration Order
-
-- Safe to skip
-
--- Expected: 3 rows
-
-### Error: "relation does not exist"
-
-- Missing prerequisite migration### Recommended Execution Order:```
-
-- Run dependency migrations first
-
-- Check migration order
-
-
-
-### Error: "constraint violation"```### Check Triggers Installed
-
-- Existing data conflicts with new schema
-
-- Check fix migrations1. etims-config.sql          → eTIMS configuration```sql
-
-- May need data cleanup
-
-2. etims-invoices.sql        → eTIMS invoice tracking  SELECT tgname, tgrelid::regclass 
-
----
-
-3. barcode-delivery-tracking.sql → Barcode systemFROM pg_trigger 
-
-## 🔄 Rollback Instructions
-
-```WHERE tgname IN ('trigger_log_order_status', 'trigger_update_driver_status');
-
-If you need to undo a migration:
-
-
-
-1. **Identify changes made**
-
-   - Review migration SQL**Total time:** ~5 minutes-- Expected: 2 rows
-
-   - List all ALTER/CREATE statements
+```ALTER TABLE orders DROP COLUMN IF EXISTS delivery_proof_id;
 
 ```
 
-2. **Write reverse SQL**
+**What to expect:** Empty table, will populate when invoices are submitted
 
-   ```sql---
+### 2. `update-old-status.sql`
 
-   -- If migration added column:
+---**Purpose:** Migrate old "On the Way" status to new "Out for Delivery" status  
 
-   ALTER TABLE orders DROP COLUMN delivery_address;### Check Functions Created
+**Created:** November 2025  
 
-   
+### 3. barcode-delivery-tracking.sql**Status:** Ready to apply  
 
-   -- If migration created table:## ✅ Verification Checklist```sql
+**Purpose:** Complete barcode delivery tracking system
 
-   DROP TABLE IF EXISTS expenses;
+**What it does:**
 
-   SELECT proname 
+**Creates:**- ✅ Updates all existing orders with "On the Way" to "Out for Delivery"
 
-   -- If migration created index:
+- `delivery_barcodes` table - Barcode generation and storage- ✅ Verifies the update was successful
 
-   DROP INDEX IF EXISTS idx_orders_location;After running all migrations, verify with:FROM pg_proc 
+- `barcode_scan_log` table - Every scan logged with GPS
 
-   ```
+- `delivery_route_tracking` table - Continuous GPS route logging**Dependencies:** Should be run AFTER `dispatch-system.sql`
 
-WHERE proname IN ('log_order_status_change', 'update_driver_status');
+- Functions:
 
-3. **Test rollback**
+  - `generate_delivery_barcode()` - Auto-generate unique barcodes**How to apply:**
 
-   - Run in development first```sql
+  - `log_barcode_scan()` - Log scans with GPS```sql
 
-   - Verify no data loss
+  - `get_barcode_details()` - Retrieve barcode info-- In Supabase Dashboard → SQL Editor
 
-   - Check feature still works without migration-- 1. Check all tables exist-- Expected: 2 rows
+- RLS policies for all tables-- Copy and paste the entire contents of update-old-status.sql
 
+-- Execute
 
-
----SELECT tablename FROM pg_tables ```
-
-
-
-## 📊 Migration StatusWHERE schemaname = 'public' 
+**When to run:** After core schema exists```
 
 
 
-| Migration | Status | Date Applied | Notes |ORDER BY tablename;### Check View Created
+**Dependencies:****Rollback:**
 
-|-----------|--------|--------------|-------|
+- `orders` table must exist```sql
 
-| location-tracking.sql | ✅ Ready | - | New feature |```sql
+- `customers` table must exist-- If you need to revert (unlikely)
 
-| barcode-delivery-tracking.sql | ✅ Ready | - | - |
+- `auth.users` table (Supabase built-in)UPDATE orders 
 
-| business-expenses.sql | ✅ Ready | - | - |-- Expected new tables:SELECT * FROM order_timeline LIMIT 1;
+SET delivery_status = 'On the Way' 
 
-| dispatch-system.sql | ✅ Ready | - | - |
+**Verification:**WHERE delivery_status = 'Out for Delivery';
 
-| etims-integration.sql | ✅ Ready | - | - |-- - delivery_barcodes
+```sql```
 
-| payments-system.sql | ✅ Ready | - | - |
+-- Check tables exist
 
-| fix-status-constraint.sql | ✅ Ready | - | Run first if needed |-- - barcode_scan_log-- Should not error
+SELECT tablename FROM pg_tables WHERE schemaname = 'public' ## 🚀 Migration Application Order
 
-| update-old-status.sql | ✅ Ready | - | Run after status fix |
+  AND tablename LIKE '%barcode%' OR tablename LIKE '%route_tracking%';
 
--- - delivery_route_tracking```
+Apply migrations in this order:
+
+-- Check functions exist
+
+SELECT routine_name FROM information_schema.routines 1. **First:** `dispatch-system.sql` - Creates all tables, triggers, and views
+
+  WHERE routine_schema = 'public' AND routine_name LIKE '%barcode%';2. **Second:** `update-old-status.sql` - Migrates existing data
+
+
+
+-- Test barcode generation## ✅ Verification After Migration
+
+SELECT generate_delivery_barcode();
+
+```After applying migrations, run these checks:
+
+
+
+**What to expect:**### Check Tables Created
+
+- 3 tables created```sql
+
+- 3 functions availableSELECT table_name 
+
+- Sample barcode: `HWS-20251105-0001`FROM information_schema.tables 
+
+WHERE table_schema = 'public' 
+
+---  AND table_name IN ('order_status_logs', 'delivery_proof', 'driver_status')
+
+ORDER BY table_name;
+
+## 🎯 Complete Migration Order
+
+-- Expected: 3 rows
+
+### Recommended Execution Order:```
+
+
+
+```### Check Triggers Installed
+
+1. etims-config.sql          → eTIMS configuration```sql
+
+2. etims-invoices.sql        → eTIMS invoice tracking  SELECT tgname, tgrelid::regclass 
+
+3. barcode-delivery-tracking.sql → Barcode systemFROM pg_trigger 
+
+```WHERE tgname IN ('trigger_log_order_status', 'trigger_update_driver_status');
+
+
+
+**Total time:** ~5 minutes-- Expected: 2 rows
+
+```
 
 ---
 
--- - etims_config
+### Check Functions Created
 
-## 🆘 Need Help?
+## ✅ Verification Checklist```sql
+
+SELECT proname 
+
+After running all migrations, verify with:FROM pg_proc 
+
+WHERE proname IN ('log_order_status_change', 'update_driver_status');
+
+```sql
+
+-- 1. Check all tables exist-- Expected: 2 rows
+
+SELECT tablename FROM pg_tables ```
+
+WHERE schemaname = 'public' 
+
+ORDER BY tablename;### Check View Created
+
+```sql
+
+-- Expected new tables:SELECT * FROM order_timeline LIMIT 1;
+
+-- - delivery_barcodes
+
+-- - barcode_scan_log-- Should not error
+
+-- - delivery_route_tracking```
+
+-- - etims_config
 
 -- - etims_invoices### Check Indexes Created
 
-- **Migration fails:** Check error message, review prerequisites
+```sql
 
-- **Not sure what to run:** Check feature documentation in `docs/````sql
+-- 2. Check functions existSELECT indexname 
 
-- **Need to rollback:** Follow rollback instructions above
+SELECT routine_name FROM information_schema.routines FROM pg_indexes 
 
-- **Custom migration needed:** Follow migration file format-- 2. Check functions existSELECT indexname 
+WHERE routine_schema = 'public' WHERE tablename IN ('order_status_logs', 'delivery_proof', 'driver_status', 'orders')
 
-
-
----SELECT routine_name FROM information_schema.routines FROM pg_indexes 
-
-
-
-**Last Updated:** November 5, 2025  WHERE routine_schema = 'public' WHERE tablename IN ('order_status_logs', 'delivery_proof', 'driver_status', 'orders')
-
-**Total Migrations:** 8 feature + 2 fixes  
-
-**Status:** ✅ All migrations tested and ready  AND routine_type = 'FUNCTION'  AND indexname LIKE 'idx_%'
-
+  AND routine_type = 'FUNCTION'  AND indexname LIKE 'idx_%'
 
 ORDER BY routine_name;ORDER BY indexname;
 
