@@ -71,6 +71,18 @@ export function Sidebar() {
     setIsMobileOpen(false);
   }, [pathname]);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMobileOpen) {
+        setIsMobileOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isMobileOpen]);
+
   // Handle touch start
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
@@ -199,12 +211,20 @@ export function Sidebar() {
 
         {/* Sign Out */}
         <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          {/* Mobile Swipe Hint */}
+          {isMobileOpen && (
+            <div className="lg:hidden mb-3 flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400 animate-pulse">
+              <ChevronLeft className="w-4 h-4" />
+              <span>Swipe or tap outside to close</span>
+            </div>
+          )}
+          
           <form action={signOut}>
             <Button
               type="submit"
               variant="outline"
               className={cn(
-                "w-full gap-3 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700",
+                "w-full gap-3 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors",
                 isCollapsed ? "lg:px-2 lg:justify-center" : "justify-start"
               )}
               title={isCollapsed ? "Sign Out" : undefined}

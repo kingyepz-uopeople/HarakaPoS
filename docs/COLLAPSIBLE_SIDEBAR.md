@@ -19,8 +19,12 @@ Modern, responsive collapsible sidebar for the admin dashboard with smooth anima
 - ✅ **Hamburger Menu** - Fixed menu button in top-left
 - ✅ **Slide-In Animation** - Smooth slide from left
 - ✅ **Overlay** - Dark backdrop when menu open
+- ✅ **Click Outside to Close** - Tap overlay to dismiss
+- ✅ **Swipe to Close** - Swipe left on sidebar to close
+- ✅ **Keyboard Support** - Press Escape to close
 - ✅ **Auto-Close** - Closes on route change
 - ✅ **Touch Friendly** - Full-width drawer
+- ✅ **Visual Hint** - Shows "Swipe or tap outside to close"
 
 ### Dark Mode Support
 - ✅ All colors adapted for dark theme
@@ -92,6 +96,55 @@ shadow-sm
 ```tsx
 const [isCollapsed, setIsCollapsed] = useState(false);
 const [isMobileOpen, setIsMobileOpen] = useState(false);
+const [touchStart, setTouchStart] = useState<number | null>(null);
+const [touchEnd, setTouchEnd] = useState<number | null>(null);
+```
+
+### Touch Gestures
+```tsx
+// Swipe left to close (minimum 50px)
+const onTouchStart = (e: React.TouchEvent) => {
+  setTouchEnd(null);
+  setTouchStart(e.targetTouches[0].clientX);
+};
+
+const onTouchMove = (e: React.TouchEvent) => {
+  setTouchEnd(e.targetTouches[0].clientX);
+};
+
+const onTouchEnd = () => {
+  if (!touchStart || !touchEnd) return;
+  const distance = touchStart - touchEnd;
+  const isLeftSwipe = distance > 50;
+  if (isLeftSwipe && isMobileOpen) {
+    setIsMobileOpen(false);
+  }
+};
+```
+
+### Keyboard Support
+```tsx
+// Close on Escape key
+useEffect(() => {
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && isMobileOpen) {
+      setIsMobileOpen(false);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+  return () => document.removeEventListener('keydown', handleEscape);
+}, [isMobileOpen]);
+```
+
+### Click Outside Detection
+```tsx
+// Overlay handles click-to-close
+<div
+  className="fixed inset-0 bg-black/50 z-40 cursor-pointer"
+  onClick={() => setIsMobileOpen(false)}
+  role="button"
+  tabIndex={0}
+/>
 ```
 
 ### Persistence
@@ -147,12 +200,16 @@ className={cn(
 5. Click chevron again to expand
 
 ### Mobile Flow
-1. User taps hamburger menu
-2. Sidebar slides in from left
-3. Dark overlay appears
-4. User clicks menu item
-5. Sidebar auto-closes
-6. Route changes
+1. User taps hamburger menu (☰)
+2. Sidebar slides in from left with shadow
+3. Dark overlay appears with backdrop blur
+4. User can:
+   - **Click/tap menu item** → Navigate & auto-close
+   - **Click/tap overlay** → Close sidebar
+   - **Swipe left on sidebar** → Close sidebar
+   - **Press Escape key** → Close sidebar
+5. Visual hint shown: "Swipe or tap outside to close"
+6. Route changes automatically close sidebar
 
 ---
 
