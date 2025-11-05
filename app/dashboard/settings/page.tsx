@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { Settings as SettingsIcon, Save, RefreshCw } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 import type { Settings } from "@/lib/types";
 
 /**
@@ -110,18 +111,21 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-3">
-          <SettingsIcon className="h-8 w-8 text-green-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">System Settings</h1>
-            <p className="text-gray-500">Configure business and operational settings</p>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <SettingsIcon className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 dark:text-green-500" />
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">System Settings</h1>
+              <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">Configure business and operational settings</p>
+            </div>
           </div>
+          <ThemeToggle />
         </div>
       </div>
 
-      <div className="grid gap-6 max-w-4xl">
+      <div className="grid gap-4 sm:gap-6 max-w-4xl">{/* Pricing Section */}
         {/* Pricing Section */}
         <Card>
           <CardHeader>
