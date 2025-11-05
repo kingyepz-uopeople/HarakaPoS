@@ -60,7 +60,7 @@ export default function DriverDashboard() {
         setDriverStatus(statusData.status || "offline");
       }
 
-      const { data: ordersData } = await supabase
+      const { data: ordersData, error: ordersError } = await supabase
         .from("orders")
         .select(`
           id,
@@ -70,12 +70,20 @@ export default function DriverDashboard() {
           customers (
             name,
             location,
-            phone_number
+            phone
           )
         `)
         .eq("assigned_driver", user.id)
-        .in("delivery_status", ["Pending", "Out for Delivery", "Delivered"])
+        .in("delivery_status", ["Pending", "Scheduled", "Out for Delivery", "Delivered"])
         .order("delivery_date", { ascending: true });
+
+      if (ordersError) {
+        console.error("Error fetching orders:", ordersError);
+      }
+
+      console.log("Driver ID:", user.id);
+      console.log("Orders fetched:", ordersData?.length || 0);
+      console.log("Orders data:", ordersData);
 
       if (ordersData) {
         // Map the data to ensure customers is a single object
@@ -84,6 +92,7 @@ export default function DriverDashboard() {
           customers: Array.isArray(order.customers) ? order.customers[0] : order.customers
         }));
         setOrders(mappedOrders);
+        console.log("Mapped orders:", mappedOrders.length);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -115,8 +124,8 @@ export default function DriverDashboard() {
 
   const todayStr = new Date().toISOString().split("T")[0];
   const todayOrders = orders.filter(o => o.delivery_date === todayStr);
-  const completed = todayOrders.filter(o => o.delivery_status === "Completed");
-  const pending = orders.filter(o => ["Pending", "Out for Delivery"].includes(o.delivery_status));
+  const completed = todayOrders.filter(o => o.delivery_status === "Delivered");
+  const pending = orders.filter(o => ["Pending", "Scheduled", "Out for Delivery"].includes(o.delivery_status));
 
   if (loading) {
     return (
@@ -234,13 +243,15 @@ export default function DriverDashboard() {
               >
                 <div className="flex items-center space-x-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    order.delivery_status === "Completed" ? "bg-green-100" :
+                    order.delivery_status === "Delivered" ? "bg-green-100" :
                     order.delivery_status === "Out for Delivery" ? "bg-blue-100" :
+                    order.delivery_status === "Scheduled" ? "bg-purple-100" :
                     "bg-orange-100"
                   }`}>
                     <Package className={`w-5 h-5 ${
-                      order.delivery_status === "Completed" ? "text-green-600" :
+                      order.delivery_status === "Delivered" ? "text-green-600" :
                       order.delivery_status === "Out for Delivery" ? "text-blue-600" :
+                      order.delivery_status === "Scheduled" ? "text-purple-600" :
                       "text-orange-600"
                     }`} />
                   </div>

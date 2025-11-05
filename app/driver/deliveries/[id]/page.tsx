@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
 import PDAPaymentFlow from "@/components/PDAPaymentFlow";
-import RequestPaymentButton from "@/components/RequestPaymentButton";
 import {
   MapPin,
   Phone,
@@ -302,6 +301,7 @@ export default function DeliveryDetailsPage() {
 
       {/* Actions */}
       <div className="space-y-3 sticky bottom-20 pb-4">
+        {/* Navigate Button - Always visible */}
         <button
           onClick={openNavigation}
           className="w-full bg-white border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50 py-4 px-4 rounded-xl text-base font-semibold transition-colors flex items-center justify-center space-x-2"
@@ -310,7 +310,8 @@ export default function DeliveryDetailsPage() {
           <span>Navigate to Location</span>
         </button>
 
-        {delivery.delivery_status === "Pending" && (
+        {/* Start Delivery Button */}
+        {(delivery.delivery_status === "Pending" || delivery.delivery_status === "Scheduled") && (
           <button
             onClick={startDelivery}
             disabled={submitting}
@@ -321,44 +322,12 @@ export default function DeliveryDetailsPage() {
           </button>
         )}
 
+        {/* Payment Collection - Only when Out for Delivery */}
         {delivery.delivery_status === "Out for Delivery" && (
-          <div className="space-y-4">
-            {/* M-Pesa STK Push Option */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
-              <div className="mb-3">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                  <DollarSign className="w-5 h-5 text-emerald-600" />
-                  <span>Send M-Pesa Request</span>
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Send payment request directly to customer's phone
-                </p>
-              </div>
-              <RequestPaymentButton
-                orderId={delivery.id}
-                amount={delivery.total_price || (delivery.quantity_kg * delivery.price_per_kg)}
-                customerPhone={delivery.customer_phone || ""}
-                customerName={delivery.customer_name}
-                initiatedFrom="driver"
-                onSuccess={() => {
-                  router.push("/driver/deliveries");
-                }}
-                onError={(error) => {
-                  console.error("Payment request failed:", error);
-                }}
-              />
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center space-x-3">
-              <div className="flex-1 h-px bg-gray-300"></div>
-              <span className="text-sm font-medium text-gray-500">OR</span>
-              <div className="flex-1 h-px bg-gray-300"></div>
-            </div>
-
-            {/* PDA Manual Payment Option */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
-              <div className="mb-3">
+          <>
+            {/* PDA Payment Collection */}
+            <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+              <div className="mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                   <span>Collect Payment on PDA</span>
@@ -376,7 +345,35 @@ export default function DeliveryDetailsPage() {
                 }}
               />
             </div>
-          </div>
+
+            {/* Divider */}
+            <div className="flex items-center space-x-3 my-2">
+              <div className="flex-1 h-px bg-gray-300"></div>
+              <span className="text-sm font-medium text-gray-500">OR</span>
+              <div className="flex-1 h-px bg-gray-300"></div>
+            </div>
+
+            {/* M-Pesa STK Push (Coming Soon) */}
+            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+              <div className="text-center">
+                <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  Send M-Pesa Request
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  M-Pesa STK Push integration coming soon
+                </p>
+                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                  <p className="text-sm text-gray-600">
+                    <strong>Customer:</strong> {delivery.customer_name}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    <strong>Phone:</strong> {delivery.customer_phone || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
