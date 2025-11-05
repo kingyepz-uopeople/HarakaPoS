@@ -7,6 +7,7 @@ import { formatCurrency } from "@/utils/formatCurrency";
 import { formatDate } from "@/utils/formatDate";
 import { Plus, Filter, X, Calendar, Clock, User as UserIcon, Phone, MapPin, Package, DollarSign, Truck } from "lucide-react";
 import { getAppSettings } from "@/utils/settings";
+import GoogleMapsLocationPicker from "@/components/GoogleMapsLocationPicker";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
@@ -18,6 +19,7 @@ export default function OrdersPage() {
   const [filterDate, setFilterDate] = useState("");
   const [filterDriver, setFilterDriver] = useState("");
   const [pricePerKg, setPricePerKg] = useState(120);
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState<string>("");
 
   // Form state for adding orders
   const [formData, setFormData] = useState({
@@ -29,6 +31,9 @@ export default function OrdersPage() {
     delivery_date: "",
     delivery_time: "",
     delivery_notes: "",
+    delivery_address: "",
+    delivery_latitude: null as number | null,
+    delivery_longitude: null as number | null,
     assigned_driver: "",
   });
 
@@ -39,8 +44,14 @@ export default function OrdersPage() {
     fetchCustomers();
     fetchDrivers();
     fetchPricePerKg();
+    fetchGoogleMapsApiKey();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchGoogleMapsApiKey = async () => {
+    const settings = await getAppSettings();
+    setGoogleMapsApiKey(settings.google_maps_api_key || "");
+  };
 
   const fetchPricePerKg = async () => {
     const settings = await getAppSettings();
@@ -129,6 +140,9 @@ export default function OrdersPage() {
         delivery_date: formData.delivery_date,
         delivery_time: formData.delivery_time || null,
         delivery_notes: formData.delivery_notes || null,
+        delivery_address: formData.delivery_address || null,
+        delivery_latitude: formData.delivery_latitude,
+        delivery_longitude: formData.delivery_longitude,
         assigned_driver: formData.assigned_driver || null,
         updated_by: user?.id || null, // Track who created the order
       };
@@ -165,6 +179,9 @@ export default function OrdersPage() {
         delivery_date: "",
         delivery_time: "",
         delivery_notes: "",
+        delivery_address: "",
+        delivery_latitude: null,
+        delivery_longitude: null,
         assigned_driver: "",
       });
       setShowAddModal(false);
@@ -590,22 +607,22 @@ export default function OrdersPage() {
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowAddModal(false)}></div>
 
-            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Add New Order</h3>
-                <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-500">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Add New Order</h3>
+                <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
                   <X className="h-6 w-6" />
                 </button>
               </div>
 
               <form onSubmit={handleAddOrder} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Customer</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer</label>
                   <select
                     required
                     value={formData.customer_id}
                     onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                   >
                     <option value="">Select a customer</option>
                     {customers.map((customer) => (
@@ -618,7 +635,7 @@ export default function OrdersPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Quantity (kg)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity (kg)</label>
                     <input
                       type="number"
                       required
@@ -626,12 +643,12 @@ export default function OrdersPage() {
                       step="0.01"
                       value={formData.quantity_kg}
                       onChange={(e) => setFormData({ ...formData, quantity_kg: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Price per kg</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Price per kg</label>
                     <input
                       type="number"
                       required
@@ -639,18 +656,18 @@ export default function OrdersPage() {
                       step="0.01"
                       value={formData.price_per_kg}
                       onChange={(e) => setFormData({ ...formData, price_per_kg: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Payment Mode</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Mode</label>
                     <select
                       value={formData.payment_mode}
                       onChange={(e) => setFormData({ ...formData, payment_mode: e.target.value as PaymentMethod })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                     >
                       <option value="Cash">Cash</option>
                       <option value="M-Pesa">M-Pesa</option>
@@ -660,11 +677,11 @@ export default function OrdersPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
                     <select
                       value={formData.delivery_status}
                       onChange={(e) => setFormData({ ...formData, delivery_status: e.target.value as OrderStatus })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                     >
                       <option value="Scheduled">Scheduled</option>
                       <option value="Pending">Pending</option>
@@ -678,33 +695,69 @@ export default function OrdersPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Delivery Date</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Delivery Date</label>
                     <input
                       type="date"
                       required
                       value={formData.delivery_date}
                       onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Delivery Time (Optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Delivery Time (Optional)</label>
                     <input
                       type="time"
                       value={formData.delivery_time}
                       onChange={(e) => setFormData({ ...formData, delivery_time: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Assign Driver (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Delivery Location
+                  </label>
+                  <GoogleMapsLocationPicker
+                    apiKey={googleMapsApiKey}
+                    value={
+                      formData.delivery_address
+                        ? {
+                            address: formData.delivery_address,
+                            latitude: formData.delivery_latitude || 0,
+                            longitude: formData.delivery_longitude || 0,
+                          }
+                        : undefined
+                    }
+                    onChange={(location) => {
+                      if (location) {
+                        setFormData({
+                          ...formData,
+                          delivery_address: location.address,
+                          delivery_latitude: location.latitude,
+                          delivery_longitude: location.longitude,
+                        });
+                      } else {
+                        setFormData({
+                          ...formData,
+                          delivery_address: "",
+                          delivery_latitude: null,
+                          delivery_longitude: null,
+                        });
+                      }
+                    }}
+                    placeholder="Enter customer delivery address..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Driver (Optional)</label>
                   <select
                     value={formData.assigned_driver}
                     onChange={(e) => setFormData({ ...formData, assigned_driver: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                   >
                     <option value="">Not assigned</option>
                     {drivers.map((driver) => (
@@ -716,12 +769,12 @@ export default function OrdersPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Delivery Notes (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Delivery Notes (Optional)</label>
                   <textarea
                     rows={3}
                     value={formData.delivery_notes}
                     onChange={(e) => setFormData({ ...formData, delivery_notes: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                   />
                 </div>
 

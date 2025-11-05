@@ -87,9 +87,13 @@ export interface Order {
   delivery_date: string; // DATE format: YYYY-MM-DD
   delivery_time?: string; // TIME format: HH:MM:SS
   delivery_notes?: string;
+  delivery_address?: string; // Customer delivery address
+  delivery_latitude?: number; // GPS latitude for delivery location
+  delivery_longitude?: number; // GPS longitude for delivery location
   assigned_driver?: string;
   created_at?: string;
   updated_at?: string;
+  updated_by?: string; // User who last updated the order
 }
 
 export interface Settings {
@@ -111,6 +115,7 @@ export interface AppSettings {
   business_address: string;
   currency: string;
   tax_rate?: number;
+  google_maps_api_key?: string;
 }
 
 // Extended types with joins for UI
