@@ -36,20 +36,68 @@ export default function ProfitAnalysisPage() {
       console.error('Error fetching profit analysis:', {
         message: error.message,
         hint: error.hint,
-        code: error.code
+        code: error.code,
+        details: error.details
       });
+      
       // Check if function doesn't exist
-      if (error.code === '42883' || error.message.includes('does not exist')) {
+      if (error.code === '42883' || error.message?.includes('does not exist') || !error.message) {
         setSetupError('Profit analysis function not found. Please run the business-expenses.sql migration in Supabase.');
+        
+        // Fallback: Calculate manually without the function
+        await calculateProfitManually();
       }
     } else if (data && data.length > 0) {
       setProfitData(data[0]);
       setSetupError(null);
     } else {
-      setProfitData(null);
+      // No data returned, try manual calculation
+      await calculateProfitManually();
     }
 
     setLoading(false);
+  };
+
+  const calculateProfitManually = async () => {
+    try {
+      // Get total revenue from sales
+      const { data: salesData } = await supabase
+        .from('sales')
+        .select('total_amount')
+        .gte('sale_date', dateRange.start)
+        .lte('sale_date', dateRange.end)
+        .eq('payment_status', 'completed');
+
+      const totalRevenue = salesData?.reduce((sum, sale) => sum + (sale.total_amount || 0), 0) || 0;
+
+      // Try to get expenses (may fail if table doesn't exist)
+      const { data: expensesData, error: expError } = await supabase
+        .from('expenses')
+        .select('amount')
+        .gte('expense_date', dateRange.start)
+        .lte('expense_date', dateRange.end);
+
+      const totalExpenses = expensesData?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0;
+
+      // Calculate profit
+      const netProfit = totalRevenue - totalExpenses;
+      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+      setProfitData({
+        total_revenue: totalRevenue,
+        total_expenses: totalExpenses,
+        net_profit: netProfit,
+        profit_margin: profitMargin
+      });
+
+      if (expError) {
+        // Expenses table doesn't exist yet
+        console.warn('Expenses table not found, showing revenue only');
+      }
+    } catch (err) {
+      console.error('Manual calculation failed:', err);
+      setProfitData(null);
+    }
   };
 
   const fetchDetailedBreakdown = async () => {

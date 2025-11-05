@@ -277,3 +277,103 @@ export interface ProfitAnalysis {
   net_profit: number;
   profit_margin: number; // Percentage
 }
+
+// eTIMS (KRA Tax Integration) Types
+export interface EtimsConfig {
+  id: string;
+  business_name: string;
+  kra_pin: string;
+  business_type: string;
+  cu_serial_number?: string;
+  cu_model?: string;
+  cu_status: 'active' | 'inactive' | 'pending';
+  environment: 'sandbox' | 'production';
+  api_base_url?: string;
+  bhf_id?: string;
+  tin?: string;
+  device_initialization_date?: string;
+  last_invoice_number: number;
+  invoice_prefix: string;
+  auto_submit: boolean;
+  require_internet: boolean;
+  print_qr_code: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface EtimsInvoice {
+  id: string;
+  invoice_number: string;
+  internal_data?: string;
+  receipt_number?: string;
+  sale_id?: string;
+  order_id?: string;
+  customer_tin?: string;
+  customer_name: string;
+  customer_phone?: string;
+  invoice_date: string;
+  sale_date: string;
+  total_before_tax: number;
+  vat_amount: number;
+  total_after_tax: number;
+  vat_rate: number;
+  tax_type: 'VAT_EXEMPT' | 'VAT_STANDARD' | 'VAT_ZERO';
+  submission_status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'failed';
+  submission_date?: string;
+  kra_response?: any;
+  kra_invoice_number?: string;
+  kra_verification_url?: string;
+  qr_code_data?: string;
+  receipt_signature?: string;
+  signature_date?: string;
+  error_message?: string;
+  retry_count: number;
+  last_retry_date?: string;
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+  items?: EtimsInvoiceItem[]; // Joined data
+}
+
+export interface EtimsInvoiceItem {
+  id: string;
+  invoice_id: string;
+  item_sequence: number;
+  item_code?: string;
+  item_name: string;
+  quantity: number;
+  unit_price: number;
+  total_amount: number;
+  tax_type: string;
+  vat_category?: string;
+  vat_rate: number;
+  vat_amount: number;
+  package_unit: string;
+  package_quantity?: number;
+  created_at?: string;
+}
+
+export interface EtimsSyncLog {
+  id: string;
+  operation_type: string;
+  request_payload?: any;
+  request_timestamp: string;
+  response_payload?: any;
+  response_timestamp?: string;
+  response_code?: number;
+  status: 'success' | 'failed' | 'timeout';
+  error_message?: string;
+  invoice_id?: string;
+  created_at?: string;
+}
+
+export interface EtimsStatistics {
+  total_invoices: number;
+  approved_invoices: number;
+  pending_invoices: number;
+  rejected_invoices: number;
+  total_revenue: number;
+  total_vat_collected: number;
+  compliance_rate: number;
+}
+
