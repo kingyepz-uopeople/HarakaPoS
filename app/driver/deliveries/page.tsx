@@ -11,7 +11,9 @@ import {
   Package,
   Navigation,
   ChevronRight,
-  Filter
+  Filter,
+  QrCode,
+  Camera
 } from "lucide-react";
 
 type FilterType = "all" | "pending" | "active";
@@ -26,6 +28,9 @@ interface Delivery {
   delivery_time: string;
   quantity_kg: number;
   total_amount: number;
+  barcode?: string;
+  barcode_status?: string;
+  scan_count?: number;
 }
 
 export default function DeliveriesPage() {
@@ -69,8 +74,19 @@ export default function DeliveriesPage() {
       }
 
       if (orders) {
+        // Get barcodes for these orders
+        const orderIds = orders.map(o => o.id);
+        const { data: barcodes } = await supabase
+          .from("delivery_barcodes")
+          .select("order_id, barcode_number, status, (select count(*) from barcode_scan_log where barcode_id = delivery_barcodes.id) as scan_count")
+          .in("order_id", orderIds);
+
+        const barcodeMap = new Map(barcodes?.map(b => [b.order_id, b]) || []);
+
         const transformedData = orders.map((order: any) => {
           const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers;
+          const barcodeData = barcodeMap.get(order.id);
+          
           return {
             id: order.id,
             customer_name: customer?.name || "Unknown",
@@ -81,6 +97,9 @@ export default function DeliveriesPage() {
             delivery_time: order.delivery_time || "Not set",
             quantity_kg: order.quantity_kg,
             total_amount: order.total_price || 0,
+            barcode: barcodeData?.barcode_number,
+            barcode_status: barcodeData?.status,
+            scan_count: barcodeData?.scan_count || 0,
           };
         });
         setDeliveries(transformedData);
@@ -116,6 +135,33 @@ export default function DeliveriesPage() {
       'Delivered': 'bg-green-100 text-green-800 border-green-200',
     };
     return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+
+  function getBarcodeStatusBadge(status?: string) {
+    if (!status) return null;
+    
+    const styles = {
+      'pending': 'bg-gray-100 text-gray-700 border-gray-200',
+      'printed': 'bg-purple-100 text-purple-700 border-purple-200',
+      'loading': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+      'in_transit': 'bg-blue-100 text-blue-700 border-blue-200',
+      'delivered': 'bg-green-100 text-green-700 border-green-200',
+      'failed': 'bg-red-100 text-red-700 border-red-200',
+    };
+    
+    const displayNames = {
+      'pending': 'Pending',
+      'printed': 'Printed',
+      'loading': 'Loading',
+      'in_transit': 'In Transit',
+      'delivered': 'Delivered',
+      'failed': 'Failed',
+    };
+    
+    const style = styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800 border-gray-200';
+    const name = displayNames[status as keyof typeof displayNames] || status;
+    
+    return { style, name };
   }
 
   function openNavigation(location: string) {
@@ -191,18 +237,45 @@ export default function DeliveriesPage() {
               <div className="p-4">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 text-lg">
                       {delivery.customer_name}
                     </h3>
-                    <span className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(delivery.status)}`}>
-                      {delivery.status}
-                    </span>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(delivery.status)}`}>
+                        {delivery.status}
+                      </span>
+                      {delivery.barcode_status && (() => {
+                        const badge = getBarcodeStatusBadge(delivery.barcode_status);
+                        return badge ? (
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${badge.style}`}>
+                            📦 {badge.name}
+                          </span>
+                        ) : null;
+                      })()}
+                    </div>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">
+                  <p className="text-xl font-bold text-gray-900 ml-2">
                     {formatCurrency(delivery.total_amount)}
                   </p>
                 </div>
+
+                {/* Barcode Info */}
+                {delivery.barcode && (
+                  <div className="mb-3 p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <QrCode className="w-4 h-4 text-emerald-700" />
+                        <span className="text-sm font-medium text-emerald-900">{delivery.barcode}</span>
+                      </div>
+                      {delivery.scan_count > 0 && (
+                        <span className="text-xs text-emerald-700">
+                          {delivery.scan_count} scan{delivery.scan_count !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Details */}
                 <div className="space-y-2 mb-4">
@@ -227,19 +300,28 @@ export default function DeliveriesPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex space-x-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {delivery.barcode && (
+                    <Link
+                      href={`/driver/scan?barcode=${delivery.barcode}`}
+                      className="bg-emerald-600 text-white hover:bg-emerald-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>Scan</span>
+                    </Link>
+                  )}
                   <button
                     onClick={() => openNavigation(delivery.location)}
-                    className="flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+                    className={`bg-emerald-50 text-emerald-700 hover:bg-emerald-100 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${delivery.barcode ? '' : 'col-span-1'}`}
                   >
                     <Navigation className="w-4 h-4" />
                     <span>Navigate</span>
                   </button>
                   <Link
                     href={`/driver/deliveries/${delivery.id}`}
-                    className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+                    className={`bg-gray-100 text-gray-700 hover:bg-gray-200 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${delivery.barcode ? '' : 'col-span-1'}`}
                   >
-                    <span>View Details</span>
+                    <span>Details</span>
                     <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
