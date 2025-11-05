@@ -21,7 +21,16 @@ const navigation = [
   { name: "Deliveries", href: "/dashboard/deliveries", icon: Truck },
   { name: "Expenses", href: "/dashboard/expenses", icon: Receipt },
   { name: "Profit Analysis", href: "/dashboard/profit-analysis", icon: TrendingUp },
-  { name: "eTIMS (Tax)", href: "/dashboard/etims", icon: FileText },
+  { 
+    name: "eTIMS (Tax)", 
+    href: "/dashboard/etims", 
+    icon: FileText,
+    submenu: [
+      { name: "Dashboard", href: "/dashboard/etims" },
+      { name: "Invoices", href: "/dashboard/etims/invoices" },
+      { name: "Configuration", href: "/dashboard/etims/config" },
+    ]
+  },
   { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];

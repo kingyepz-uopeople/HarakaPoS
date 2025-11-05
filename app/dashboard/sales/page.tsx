@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { SaleWithDelivery, PaymentMethod, Order, Customer, Settings } from '@/lib/types';
+import { createEtimsInvoiceFromSale } from '@/lib/etims-invoice-generator';
 import { 
   ShoppingCart, 
   Plus, 
@@ -269,9 +270,11 @@ export default function SalesPage() {
 
       console.log('Attempting to insert sale with data:', saleData);
 
-      const { error: insertError } = await supabase
+      const { data: newSale, error: insertError } = await supabase
         .from('sales')
-        .insert([saleData]);
+        .insert([saleData])
+        .select()
+        .single();
 
       if (insertError) {
         // Log the raw error object
@@ -291,6 +294,28 @@ export default function SalesPage() {
         console.error('Extracted error info:', errorInfo);
         alert(`Failed to record sale:\n${errorInfo.message}\n\nDetails: ${errorInfo.details}\nCode: ${errorInfo.code}\nStatus: ${errorInfo.statusCode}`);
         throw new Error(`Failed to insert sale: ${errorInfo.message}`);
+      }
+
+      // Create eTIMS invoice for this sale
+      if (newSale) {
+        try {
+          const etimsResult = await createEtimsInvoiceFromSale({
+            saleId: newSale.id,
+            customerName: customers.find(c => c.id === formData.customer_id)?.name || 'Walk-in Customer',
+            customerTin: customers.find(c => c.id === formData.customer_id)?.kra_pin || undefined,
+            notes: `Sale from ${saleType === 'order' ? 'order' : 'walk-in'}`,
+          });
+
+          if (etimsResult.success) {
+            console.log('✅ eTIMS invoice created:', etimsResult.message);
+          } else {
+            console.warn('⚠️ eTIMS invoice failed:', etimsResult.message);
+            // Don't fail the sale - invoice can be created manually later
+          }
+        } catch (etimsError) {
+          console.error('❌ eTIMS error:', etimsError);
+          // Don't fail the sale
+        }
       }
 
       // If sale from order, mark order as Delivered

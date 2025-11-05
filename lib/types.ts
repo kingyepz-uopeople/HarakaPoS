@@ -72,6 +72,7 @@ export interface Customer {
   name: string;
   phone: string;
   location?: string;
+  kra_pin?: string; // Optional KRA PIN for tax invoices
   created_at?: string;
 }
 
@@ -295,8 +296,11 @@ export interface EtimsConfig {
   last_invoice_number: number;
   invoice_prefix: string;
   auto_submit: boolean;
+  auto_submit_invoices?: boolean; // Alias for auto_submit
   require_internet: boolean;
   print_qr_code: boolean;
+  enabled?: boolean; // Whether eTIMS is enabled at all
+  default_vat_rate?: number; // Default VAT rate (e.g., 16)
   created_at?: string;
   updated_at?: string;
 }
