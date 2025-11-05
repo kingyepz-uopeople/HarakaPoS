@@ -346,3 +346,10 @@ docs/               # Start here
 - [Main README](./README.md) - Project overview
 - [Documentation Index](./docs/README.md) - All documentation
 - [Migration Guide](./supabase/migrations/README.md) - Database changes
+
+
+## Docs organization (updated 2025-11-05)
+- docs/mpesa-setup/ : All M-Pesa & payment docs
+- docs/pda-guides/  : PDA terminal & setup guides
+- supabase/migrations/: Database migrations including payments-system.sql
+
