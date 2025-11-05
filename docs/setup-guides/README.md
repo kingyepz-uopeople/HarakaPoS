@@ -25,6 +25,26 @@ Step-by-step guides for configuring HarakaPOS features
 
 ---
 
+### 🖥️ [Virtual CU Guide](./VIRTUAL_CU_GUIDE.md)
+**Using Virtual Control Unit for eTIMS without physical hardware**
+
+**What you'll learn:**
+- Virtual CU vs Physical CU comparison
+- Setting up Virtual CU (5 minutes)
+- Testing with Virtual CU
+- Migration to physical CU
+- Cost savings and benefits
+
+**Time required:** 5-10 minutes
+
+**Prerequisites:**
+- HarakaPOS installed
+- eTIMS basic understanding
+
+**Best for:** Testing, development, sandbox environment, cost savings
+
+---
+
 ### ⚡ [Quick Start eTIMS](./QUICK_START_ETIMS.md)
 **Fast-track eTIMS setup for experienced users**
 
@@ -70,6 +90,9 @@ Step-by-step guides for configuring HarakaPOS features
 ### New to eTIMS?
 → Start with **[eTIMS Setup Guide](./ETIMS_SETUP_GUIDE.md)**
 
+### Don't have KRA hardware yet?
+→ Use **[Virtual CU Guide](./VIRTUAL_CU_GUIDE.md)** to start immediately!
+
 ### Already know eTIMS?
 → Use **[Quick Start eTIMS](./QUICK_START_ETIMS.md)**
 
@@ -79,7 +102,8 @@ Step-by-step guides for configuring HarakaPOS features
 ### First time with HarakaPOS?
 1. Read main **[Documentation](../README.md)**
 2. Run **[Database Migrations](../../supabase/migrations/README.md)**
-3. Follow setup guides for features you need
+3. **[Virtual CU Guide](./VIRTUAL_CU_GUIDE.md)** (if using eTIMS without hardware)
+4. Follow setup guides for features you need
 
 ---
 

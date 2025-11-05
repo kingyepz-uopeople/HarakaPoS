@@ -192,22 +192,23 @@ export default function OrdersPage() {
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
-      // Get current user for updated_by field
-      const { data: { user } } = await supabase.auth.getUser();
-
       const { error } = await supabase
         .from("orders")
         .update({ 
           delivery_status: newStatus,
-          updated_by: user?.id || null, // Track who updated the order
         })
         .eq("id", orderId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating order status:", error);
+        alert(`Failed to update order status: ${error.message}`);
+        return;
+      }
+      
       fetchOrders();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating order status:", error);
-      alert("Failed to update order status.");
+      alert(`Failed to update order status: ${error?.message || 'Unknown error'}`);
     }
   };
 
