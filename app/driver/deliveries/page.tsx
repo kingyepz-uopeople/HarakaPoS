@@ -78,8 +78,19 @@ export default function DeliveriesPage() {
         const orderIds = orders.map(o => o.id);
         const { data: barcodes } = await supabase
           .from("delivery_barcodes")
-          .select("order_id, barcode_number, status, (select count(*) from barcode_scan_log where barcode_id = delivery_barcodes.id) as scan_count")
+          .select("*")
           .in("order_id", orderIds);
+
+        // Get scan counts
+        const { data: scanCounts } = await supabase
+          .from("barcode_scan_log")
+          .select("barcode_id");
+
+        const scanCountMap = new Map<string, number>();
+        scanCounts?.forEach(scan => {
+          const count = scanCountMap.get(scan.barcode_id) || 0;
+          scanCountMap.set(scan.barcode_id, count + 1);
+        });
 
         const barcodeMap = new Map(barcodes?.map(b => [b.order_id, b]) || []);
 
@@ -99,7 +110,7 @@ export default function DeliveriesPage() {
             total_amount: order.total_price || 0,
             barcode: barcodeData?.barcode_number,
             barcode_status: barcodeData?.status,
-            scan_count: barcodeData?.scan_count || 0,
+            scan_count: barcodeData ? (scanCountMap.get(barcodeData.id) || 0) : 0,
           };
         });
         setDeliveries(transformedData);
@@ -268,7 +279,7 @@ export default function DeliveriesPage() {
                         <QrCode className="w-4 h-4 text-emerald-700" />
                         <span className="text-sm font-medium text-emerald-900">{delivery.barcode}</span>
                       </div>
-                      {delivery.scan_count > 0 && (
+                      {(delivery.scan_count || 0) > 0 && (
                         <span className="text-xs text-emerald-700">
                           {delivery.scan_count} scan{delivery.scan_count !== 1 ? 's' : ''}
                         </span>

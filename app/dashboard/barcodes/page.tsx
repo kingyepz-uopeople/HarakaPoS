@@ -379,7 +379,13 @@ export default function BarcodesPage() {
 }
 
 function NewBarcodeModal({ onClose, onGenerate }: { onClose: () => void; onGenerate: (data: any) => void }) {
+  const supabase = createClient();
+  const [mode, setMode] = useState<'order' | 'manual'>('order');
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [formData, setFormData] = useState({
+    order_id: '',
     customer_name: '',
     customer_phone: '',
     delivery_location: '',
@@ -387,83 +393,238 @@ function NewBarcodeModal({ onClose, onGenerate }: { onClose: () => void; onGener
     total_amount: '',
   });
 
+  useEffect(() => {
+    fetchOrdersWithoutBarcodes();
+  }, []);
+
+  const fetchOrdersWithoutBarcodes = async () => {
+    try {
+      // Get all orders
+      const { data: allOrders, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          customers (
+            id,
+            name,
+            phone,
+            location
+          )
+        `)
+        .in('delivery_status', ['Pending', 'Out for Delivery'])
+        .order('delivery_date', { ascending: true });
+
+      if (ordersError) throw ordersError;
+
+      // Get orders that already have barcodes
+      const { data: existingBarcodes } = await supabase
+        .from('delivery_barcodes')
+        .select('order_id')
+        .not('order_id', 'is', null);
+
+      const orderIdsWithBarcodes = new Set(existingBarcodes?.map(b => b.order_id) || []);
+
+      // Filter out orders that already have barcodes
+      const ordersWithoutBarcodes = allOrders?.filter(order => !orderIdsWithBarcodes.has(order.id)) || [];
+
+      setOrders(ordersWithoutBarcodes);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const handleOrderSelect = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers;
+      setSelectedOrder(order);
+      setFormData({
+        order_id: order.id,
+        customer_name: customer?.name || '',
+        customer_phone: customer?.phone || '',
+        delivery_location: customer?.location || '',
+        quantity_kg: order.quantity_kg?.toString() || '',
+        total_amount: order.total_price?.toString() || '',
+      });
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onGenerate(formData);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 no-print">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">Generate New Barcode</h2>
 
+        {/* Mode Toggle */}
+        <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setMode('order')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              mode === 'order'
+                ? 'bg-white text-blue-600 shadow'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            📦 From Order
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('manual')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              mode === 'manual'
+                ? 'bg-white text-blue-600 shadow'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            ✏️ Manual Entry
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Customer Name *
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.customer_name}
-              onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {mode === 'order' ? (
+            <>
+              {/* Order Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Order *
+                </label>
+                {loadingOrders ? (
+                  <div className="text-sm text-gray-500 py-2">Loading orders...</div>
+                ) : orders.length === 0 ? (
+                  <div className="text-sm text-gray-500 py-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    ⚠️ No orders available without barcodes. All orders either have barcodes or are completed.
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={formData.order_id}
+                    onChange={(e) => handleOrderSelect(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Select an order --</option>
+                    {orders.map((order) => {
+                      const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers;
+                      return (
+                        <option key={order.id} value={order.id}>
+                          {customer?.name || 'Unknown'} - {order.quantity_kg}kg - KSh {order.total_price?.toLocaleString()} - {order.delivery_date}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Customer Phone
-            </label>
-            <input
-              type="tel"
-              value={formData.customer_phone}
-              onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+              {/* Auto-filled Order Details */}
+              {selectedOrder && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                  <h3 className="font-semibold text-blue-900 mb-2">Order Details</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-600">Customer:</span>
+                      <p className="font-medium text-gray-900">{formData.customer_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Phone:</span>
+                      <p className="font-medium text-gray-900">{formData.customer_phone}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Location:</span>
+                      <p className="font-medium text-gray-900">{formData.delivery_location}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Delivery Date:</span>
+                      <p className="font-medium text-gray-900">{selectedOrder.delivery_date}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Quantity:</span>
+                      <p className="font-medium text-gray-900">{formData.quantity_kg} kg</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Amount:</span>
+                      <p className="font-medium text-gray-900">KSh {parseFloat(formData.total_amount).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Manual Entry Fields */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Customer Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.customer_name}
+                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Delivery Location
-            </label>
-            <input
-              type="text"
-              value={formData.delivery_location}
-              onChange={(e) => setFormData({ ...formData, delivery_location: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Customer Phone
+                </label>
+                <input
+                  type="tel"
+                  value={formData.customer_phone}
+                  onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Quantity (kg) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                required
-                value={formData.quantity_kg}
-                onChange={(e) => setFormData({ ...formData, quantity_kg: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Delivery Location
+                </label>
+                <input
+                  type="text"
+                  value={formData.delivery_location}
+                  onChange={(e) => setFormData({ ...formData, delivery_location: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Amount (KSh) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                required
-                value={formData.total_amount}
-                onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantity (kg) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={formData.quantity_kg}
+                    onChange={(e) => setFormData({ ...formData, quantity_kg: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Amount (KSh) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={formData.total_amount}
+                    onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button
@@ -475,7 +636,8 @@ function NewBarcodeModal({ onClose, onGenerate }: { onClose: () => void; onGener
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              disabled={mode === 'order' && !selectedOrder}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Generate
             </button>
