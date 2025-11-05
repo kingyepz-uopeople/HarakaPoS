@@ -240,3 +240,40 @@ export interface MpesaCallbackResponse {
   TransactionDate?: string;
   PhoneNumber?: string;
 }
+
+// Business Expenses Types
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface Expense {
+  id: string;
+  expense_date: string; // Changed from 'date' to match schema
+  amount: number;
+  category_id: string;
+  category?: ExpenseCategory; // Joined data
+  description: string; // Required in schema
+  payment_method: 'cash' | 'mpesa' | 'bank_transfer' | 'cheque' | 'credit_card';
+  payment_reference?: string; // M-Pesa code, cheque number, etc.
+  vendor_name?: string; // Changed from 'supplier'
+  vendor_contact?: string;
+  receipt_number?: string;
+  receipt_image_url?: string; // Changed from 'receipt_url'
+  notes?: string;
+  is_recurring?: boolean;
+  recurring_frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  recorded_by: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProfitAnalysis {
+  total_revenue: number;
+  total_expenses: number;
+  net_profit: number;
+  profit_margin: number; // Percentage
+}

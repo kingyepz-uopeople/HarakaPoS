@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, ShoppingCart, Package, Truck, BarChart3, Settings, LogOut, ClipboardList, Users } from "lucide-react";
+import { Home, ShoppingCart, Package, Truck, BarChart3, Settings, LogOut, ClipboardList, Users, Receipt, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
@@ -19,6 +19,8 @@ const navigation = [
   { name: "Customers", href: "/dashboard/customers", icon: Users },
   { name: "Stock", href: "/dashboard/stock", icon: Package },
   { name: "Deliveries", href: "/dashboard/deliveries", icon: Truck },
+  { name: "Expenses", href: "/dashboard/expenses", icon: Receipt },
+  { name: "Profit Analysis", href: "/dashboard/profit-analysis", icon: TrendingUp },
   { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];

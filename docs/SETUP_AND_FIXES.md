@@ -44,6 +44,28 @@ Run migrations in Supabase SQL Editor **in this order**:
 
 1. `supabase/migrations/payments-system.sql`
 2. `supabase/migrations/dispatch-system.sql`
+3. `supabase/migrations/business-expenses.sql` *(NEW - for expense tracking)*
+
+### 3.1 Storage Bucket Setup (For Receipt Uploads)
+
+In Supabase Dashboard → Storage:
+
+1. Create a new bucket named `receipts`
+2. Set bucket to **Public**
+3. Add policy:
+   ```sql
+   -- Allow authenticated users to upload receipts
+   CREATE POLICY "Allow authenticated uploads"
+   ON storage.objects FOR INSERT
+   TO authenticated
+   WITH CHECK (bucket_id = 'receipts');
+
+   -- Allow public read access
+   CREATE POLICY "Public read access"
+   ON storage.objects FOR SELECT
+   TO public
+   USING (bucket_id = 'receipts');
+   ```
 
 ### 4. Run Dev Server
 
@@ -332,7 +354,55 @@ console.log(data, error);
 
 ---
 
-## 📞 Get Help
+## � Business Expense Tracking (NEW)
+
+### Overview
+
+Track all business expenses with categorization, receipt uploads, and profit analysis.
+
+### Features
+
+1. **Expense Categories** (Pre-configured):
+   - Fuel & Transport
+   - Raw Materials (potatoes, oil, etc.)
+   - Utilities (electricity, water)
+   - Salaries & Wages
+   - Maintenance & Repairs
+   - Office Supplies
+   - Marketing
+   - Other
+
+2. **Expense Recording**:
+   - Date tracking
+   - Amount with payment method
+   - Supplier/vendor information
+   - Receipt/invoice upload
+   - Notes for context
+
+3. **Profit Analysis**:
+   - Total revenue vs total expenses
+   - Net profit calculation
+   - Profit margin percentage
+   - Category-wise breakdown
+   - Export to CSV
+
+### Usage
+
+1. **Add Expense**: Dashboard → Expenses → Add Expense
+2. **View Reports**: Dashboard → Profit Analysis
+3. **Filter by Date**: Select date range for analysis
+4. **Export Data**: Download CSV for accounting
+
+### Receipt Storage
+
+- Receipts stored in Supabase Storage
+- Supports images (JPG, PNG) and PDFs
+- Public read access for viewing
+- Authenticated upload only
+
+---
+
+## �📞 Get Help
 
 ### Documentation
 
@@ -352,11 +422,13 @@ console.log(data, error);
 
 Before deploying to production:
 
-- [ ] All migrations run successfully
+- [ ] All migrations run successfully (including business-expenses.sql)
+- [ ] Storage bucket 'receipts' created with policies
 - [ ] Environment variables set in Vercel
 - [ ] M-Pesa production credentials configured
 - [ ] Callback URL updated to production domain
 - [ ] Test payment flow end-to-end
+- [ ] Test expense tracking with receipt upload
 - [ ] PDA app installs correctly
 - [ ] Receipt generation works
 - [ ] RLS policies reviewed
