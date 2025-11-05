@@ -1,15 +1,20 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, ShoppingCart, Package, Truck, BarChart3, Settings, LogOut, ClipboardList, Users, Receipt, TrendingUp, FileText, Barcode } from "lucide-react";
+import { 
+  Home, ShoppingCart, Package, Truck, BarChart3, Settings, LogOut, 
+  ClipboardList, Users, Receipt, TrendingUp, FileText, Barcode,
+  Menu, X, ChevronLeft, ChevronRight
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
 
 /**
  * Admin Sidebar Component
- * Navigation sidebar for admin dashboard
+ * Collapsible navigation sidebar for admin dashboard
  */
 
 const navigation = [
@@ -38,57 +43,139 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Load saved state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) {
+      setIsCollapsed(saved === "true");
+    }
+  }, []);
+
+  // Save state to localStorage
+  const toggleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem("sidebar-collapsed", String(newState));
+  };
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
 
   return (
-    <div className="flex h-screen w-64 flex-col bg-white border-r">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-2 border-b px-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white">
-          <span className="text-lg font-bold">H</span>
-        </div>
-        <div>
-          <h1 className="text-lg font-bold text-gray-900">HarakaPOS</h1>
-          <p className="text-xs text-gray-500">Admin Panel</p>
-        </div>
-      </div>
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileOpen(!isMobileOpen)}
+        className="fixed top-4 left-4 z-50 lg:hidden p-2 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700"
+        aria-label="Toggle menu"
+      >
+        {isMobileOpen ? (
+          <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+        ) : (
+          <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+        )}
+      </button>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-          
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              {item.name}
-            </Link>
-          );
-        })}
-      </nav>
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
 
-      {/* Sign Out */}
-      <div className="border-t p-4">
-        <form action={signOut}>
-          <Button
-            type="submit"
-            variant="outline"
-            className="w-full justify-start gap-3"
+      {/* Sidebar */}
+      <div
+        className={cn(
+          "fixed lg:sticky top-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transition-all duration-300 ease-in-out",
+          // Desktop
+          isCollapsed ? "lg:w-20" : "lg:w-64",
+          // Mobile
+          isMobileOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0"
+        )}
+      >
+        {/* Logo */}
+        <div className="flex h-16 items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4">
+          <div className={cn("flex items-center gap-2", isCollapsed && "lg:justify-center lg:w-full")}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex-shrink-0">
+              <span className="text-lg font-bold">H</span>
+            </div>
+            {!isCollapsed && (
+              <div className="lg:block">
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">HarakaPOS</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Admin Panel</p>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Collapse Button */}
+          <button
+            onClick={toggleCollapse}
+            className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </Button>
-        </form>
+            {isCollapsed ? (
+              <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            ) : (
+              <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            )}
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          {navigation.map((item) => {
+            const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+            const Icon = item.icon;
+            
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                  isActive
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
+                  isCollapsed && "lg:justify-center lg:px-2"
+                )}
+                title={isCollapsed ? item.name : undefined}
+              >
+                <Icon className={cn("flex-shrink-0", isCollapsed ? "w-6 h-6" : "w-5 h-5")} />
+                {!isCollapsed && <span className="truncate">{item.name}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Sign Out */}
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <form action={signOut}>
+            <Button
+              type="submit"
+              variant="outline"
+              className={cn(
+                "w-full gap-3 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700",
+                isCollapsed ? "lg:px-2 lg:justify-center" : "justify-start"
+              )}
+              title={isCollapsed ? "Sign Out" : undefined}
+            >
+              <LogOut className={cn(isCollapsed ? "w-6 h-6" : "w-5 h-5")} />
+              {!isCollapsed && <span>Sign Out</span>}
+            </Button>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
