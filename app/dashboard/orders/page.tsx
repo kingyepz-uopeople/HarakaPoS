@@ -7,7 +7,7 @@ import { formatCurrency } from "@/utils/formatCurrency";
 import { formatDate } from "@/utils/formatDate";
 import { Plus, Filter, X, Calendar, Clock, User as UserIcon, Phone, MapPin, Package, DollarSign, Truck } from "lucide-react";
 import { getAppSettings } from "@/utils/settings";
-import GoogleMapsLocationPicker from "@/components/GoogleMapsLocationPicker";
+import OpenStreetMapLocationPicker from "@/components/OpenStreetMapLocationPicker";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
@@ -19,7 +19,6 @@ export default function OrdersPage() {
   const [filterDate, setFilterDate] = useState("");
   const [filterDriver, setFilterDriver] = useState("");
   const [pricePerKg, setPricePerKg] = useState(120);
-  const [googleMapsApiKey, setGoogleMapsApiKey] = useState<string>("");
 
   // Form state for adding orders
   const [formData, setFormData] = useState({
@@ -44,14 +43,8 @@ export default function OrdersPage() {
     fetchCustomers();
     fetchDrivers();
     fetchPricePerKg();
-    fetchGoogleMapsApiKey();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const fetchGoogleMapsApiKey = async () => {
-    const settings = await getAppSettings();
-    setGoogleMapsApiKey(settings.google_maps_api_key || "");
-  };
 
   const fetchPricePerKg = async () => {
     const settings = await getAppSettings();
@@ -720,8 +713,7 @@ export default function OrdersPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Delivery Location
                   </label>
-                  <GoogleMapsLocationPicker
-                    apiKey={googleMapsApiKey}
+                  <OpenStreetMapLocationPicker
                     value={
                       formData.delivery_address
                         ? {
@@ -748,7 +740,7 @@ export default function OrdersPage() {
                         });
                       }
                     }}
-                    placeholder="Enter customer delivery address..."
+                    placeholder="Search for delivery address in Kenya..."
                   />
                 </div>
 
