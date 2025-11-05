@@ -88,11 +88,13 @@ export default function DeliveryDetailsPage() {
         payment_method: "Cash",
         customer_id: delivery.customer_id,
         order_id: delivery.id,
-        recorded_by: user.id,
       };
 
       const { error: saleError } = await supabase.from("sales").insert([saleData]);
-      if (saleError) throw saleError;
+      if (saleError) {
+        console.error("Error creating sale:", saleError);
+        throw new Error(`Failed to create sale: ${saleError.message}`);
+      }
 
       // 2. Update order status
       const { error: orderError } = await supabase
