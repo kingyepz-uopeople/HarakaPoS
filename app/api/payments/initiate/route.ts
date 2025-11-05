@@ -67,11 +67,13 @@ export async function POST(request: NextRequest) {
 
     try {
       // Initiate M-Pesa STK Push
+      // Context: 'delivery' will use Paybill if configured, otherwise uses default shortcode
       const mpesaResponse = await initiateMpesaSTKPush({
         phoneNumber: phoneNumber,
         amount: amount,
-        accountReference: `Order-${order.id.substring(0, 8)}`,
-        transactionDesc: `Payment for ${order.quantity_kg}kg potatoes`,
+        accountReference: `HWS${order.id.substring(0, 9)}`, // "HWS" = Haraka Wedges Supplies (max 12 chars)
+        transactionDesc: `${order.quantity_kg}kg Potatoes`, // Shows on customer's phone
+        context: 'delivery', // Use Paybill for deliveries if configured
       });
 
       // Update payment with M-Pesa request ID

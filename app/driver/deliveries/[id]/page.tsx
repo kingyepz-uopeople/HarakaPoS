@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
 import PDAPaymentFlow from "@/components/PDAPaymentFlow";
+import RequestPaymentButton from "@/components/RequestPaymentButton";
 import {
   MapPin,
   Phone,
@@ -318,15 +319,60 @@ export default function DeliveryDetailsPage() {
         )}
 
         {delivery.delivery_status === "Out for Delivery" && (
-          <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
-            <PDAPaymentFlow
-              orderId={delivery.id}
-              amount={delivery.total_price || (delivery.quantity_kg * delivery.price_per_kg)}
-              customerName={delivery.customer_name}
-              onComplete={() => {
-                router.push("/driver/deliveries");
-              }}
-            />
+          <div className="space-y-4">
+            {/* M-Pesa STK Push Option */}
+            <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
+              <div className="mb-3">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                  <DollarSign className="w-5 h-5 text-emerald-600" />
+                  <span>Send M-Pesa Request</span>
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Send payment request directly to customer's phone
+                </p>
+              </div>
+              <RequestPaymentButton
+                orderId={delivery.id}
+                amount={delivery.total_price || (delivery.quantity_kg * delivery.price_per_kg)}
+                customerPhone={delivery.customer_phone || ""}
+                customerName={delivery.customer_name}
+                initiatedFrom="driver"
+                onSuccess={() => {
+                  router.push("/driver/deliveries");
+                }}
+                onError={(error) => {
+                  console.error("Payment request failed:", error);
+                }}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center space-x-3">
+              <div className="flex-1 h-px bg-gray-300"></div>
+              <span className="text-sm font-medium text-gray-500">OR</span>
+              <div className="flex-1 h-px bg-gray-300"></div>
+            </div>
+
+            {/* PDA Manual Payment Option */}
+            <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
+              <div className="mb-3">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <span>Collect Payment on PDA</span>
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Use your PDA terminal to process M-Pesa or accept cash
+                </p>
+              </div>
+              <PDAPaymentFlow
+                orderId={delivery.id}
+                amount={delivery.total_price || (delivery.quantity_kg * delivery.price_per_kg)}
+                customerName={delivery.customer_name}
+                onComplete={() => {
+                  router.push("/driver/deliveries");
+                }}
+              />
+            </div>
           </div>
         )}
       </div>
