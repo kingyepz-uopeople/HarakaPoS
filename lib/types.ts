@@ -381,3 +381,146 @@ export interface EtimsStatistics {
   compliance_rate: number;
 }
 
+// Barcode Delivery Tracking Types
+export type BarcodeStatus = 
+  | 'pending'       // Barcode generated, not yet used
+  | 'printed'       // Barcode label printed
+  | 'loading'       // Items being loaded to vehicle
+  | 'in_transit'    // Driver en route to customer
+  | 'delivered'     // Successfully delivered
+  | 'failed'        // Delivery failed
+  | 'cancelled';    // Delivery cancelled
+
+export type ScanType =
+  | 'generate'      // Barcode created
+  | 'print'         // Barcode printed
+  | 'loading'       // Scanned during loading
+  | 'departure'     // Scanned when leaving warehouse
+  | 'arrival'       // Scanned on arrival at location
+  | 'delivery'      // Scanned on successful delivery
+  | 'verification'; // Customer verification scan
+
+export interface DeliveryBarcode {
+  id: string;
+  barcode: string;
+  order_id?: string;
+  sale_id?: string;
+  
+  // Generation info
+  generated_at: string;
+  generated_by?: string;
+  
+  // Delivery info
+  customer_name: string;
+  customer_phone?: string;
+  delivery_location?: string;
+  quantity_kg: number;
+  total_amount: number;
+  
+  // Status tracking
+  status: BarcodeStatus;
+  
+  // Scan tracking
+  first_scan_at?: string;
+  first_scanned_by?: string;
+  last_scan_at?: string;
+  last_scanned_by?: string;
+  scan_count: number;
+  
+  // Delivery completion
+  delivered_at?: string;
+  delivered_by?: string;
+  delivery_photo_url?: string;
+  delivery_signature_url?: string;
+  delivery_notes?: string;
+  customer_rating?: number;
+  
+  // Metadata
+  created_at?: string;
+  updated_at?: string;
+  
+  // Joined data
+  order?: Order;
+  sale?: Sale;
+  driver?: User;
+  scan_history?: BarcodeScanLog[];
+}
+
+export interface BarcodeScanLog {
+  id: string;
+  barcode_id: string;
+  barcode: string;
+  
+  // Scan details
+  scanned_at: string;
+  scanned_by?: string;
+  scan_type: ScanType;
+  
+  // Location
+  latitude?: number;
+  longitude?: number;
+  location_accuracy?: number;
+  location_address?: string;
+  
+  // Device info
+  device_type?: string;
+  device_id?: string;
+  user_agent?: string;
+  
+  // Status change
+  old_status?: string;
+  new_status?: string;
+  
+  // Notes and attachments
+  notes?: string;
+  photo_url?: string;
+  
+  created_at?: string;
+  
+  // Joined data
+  user?: User;
+}
+
+export interface DeliveryRouteTracking {
+  id: string;
+  barcode_id: string;
+  driver_id: string;
+  
+  // Location
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  altitude?: number;
+  speed?: number;
+  heading?: number;
+  
+  // Timestamp
+  recorded_at: string;
+  
+  // Battery and connectivity
+  battery_level?: number;
+  is_online: boolean;
+  
+  created_at?: string;
+}
+
+export interface BarcodeDetails {
+  barcode: string;
+  status: BarcodeStatus;
+  customer_name: string;
+  customer_phone?: string;
+  delivery_location?: string;
+  quantity_kg: number;
+  total_amount: number;
+  generated_at: string;
+  first_scan_at?: string;
+  last_scan_at?: string;
+  scan_count: number;
+  delivered_at?: string;
+  delivery_photo_url?: string;
+  delivery_notes?: string;
+  customer_rating?: number;
+  scan_history?: BarcodeScanLog[];
+}
+
+

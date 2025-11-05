@@ -26,32 +26,35 @@ export default function ProfitAnalysisPage() {
 
   const fetchProfitAnalysis = async () => {
     setLoading(true);
+    setSetupError(null);
     
-    const { data, error } = await supabase.rpc('get_profit_analysis', {
-      start_date: dateRange.start,
-      end_date: dateRange.end,
-    });
-
-    if (error) {
-      console.error('Error fetching profit analysis:', {
-        message: error.message,
-        hint: error.hint,
-        code: error.code,
-        details: error.details
+    try {
+      const { data, error } = await supabase.rpc('get_profit_analysis', {
+        start_date: dateRange.start,
+        end_date: dateRange.end,
       });
-      
-      // Check if function doesn't exist
-      if (error.code === '42883' || error.message?.includes('does not exist') || !error.message) {
-        setSetupError('Profit analysis function not found. Please run the business-expenses.sql migration in Supabase.');
+
+      if (error) {
+        console.warn('RPC function error:', error.message || 'Unknown error');
+        
+        // Check if function doesn't exist
+        if (error.code === '42883' || error.message?.includes('does not exist')) {
+          console.log('Function not found, using manual calculation');
+          setSetupError('Profit analysis function not found. Using manual calculation.');
+        }
         
         // Fallback: Calculate manually without the function
         await calculateProfitManually();
+      } else if (data && data.length > 0) {
+        setProfitData(data[0]);
+        setSetupError(null);
+      } else {
+        // No data returned, try manual calculation
+        console.log('No data from RPC, using manual calculation');
+        await calculateProfitManually();
       }
-    } else if (data && data.length > 0) {
-      setProfitData(data[0]);
-      setSetupError(null);
-    } else {
-      // No data returned, try manual calculation
+    } catch (err) {
+      console.error('Error in fetchProfitAnalysis:', err);
       await calculateProfitManually();
     }
 
@@ -60,15 +63,21 @@ export default function ProfitAnalysisPage() {
 
   const calculateProfitManually = async () => {
     try {
-      // Get total revenue from sales
-      const { data: salesData } = await supabase
+      console.log('Calculating profit manually for date range:', dateRange);
+      
+      // Get total revenue from sales (using 'date' column and 'total_amount')
+      const { data: salesData, error: salesError } = await supabase
         .from('sales')
         .select('total_amount')
-        .gte('sale_date', dateRange.start)
-        .lte('sale_date', dateRange.end)
-        .eq('payment_status', 'completed');
+        .gte('date', dateRange.start)
+        .lte('date', dateRange.end);
+
+      if (salesError) {
+        console.error('Error fetching sales:', salesError);
+      }
 
       const totalRevenue = salesData?.reduce((sum, sale) => sum + (sale.total_amount || 0), 0) || 0;
+      console.log('Total revenue:', totalRevenue, 'from', salesData?.length || 0, 'sales');
 
       // Try to get expenses (may fail if table doesn't exist)
       const { data: expensesData, error: expError } = await supabase
@@ -77,11 +86,18 @@ export default function ProfitAnalysisPage() {
         .gte('expense_date', dateRange.start)
         .lte('expense_date', dateRange.end);
 
+      if (expError) {
+        console.warn('Error fetching expenses:', expError.message);
+      }
+
       const totalExpenses = expensesData?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0;
+      console.log('Total expenses:', totalExpenses, 'from', expensesData?.length || 0, 'expenses');
 
       // Calculate profit
       const netProfit = totalRevenue - totalExpenses;
       const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+      console.log('Setting profit data:', { totalRevenue, totalExpenses, netProfit, profitMargin });
 
       setProfitData({
         total_revenue: totalRevenue,
@@ -90,51 +106,63 @@ export default function ProfitAnalysisPage() {
         profit_margin: profitMargin
       });
 
-      if (expError) {
+      if (expError && expError.code === '42P01') {
         // Expenses table doesn't exist yet
-        console.warn('Expenses table not found, showing revenue only');
+        setSetupError('Expenses tracking not set up yet. Showing revenue only.');
       }
     } catch (err) {
       console.error('Manual calculation failed:', err);
-      setProfitData(null);
+      setProfitData({
+        total_revenue: 0,
+        total_expenses: 0,
+        net_profit: 0,
+        profit_margin: 0
+      });
     }
   };
 
   const fetchDetailedBreakdown = async () => {
-    // Revenue breakdown by product type
-    const { data: salesData } = await supabase
-      .from('sales')
-      .select('product_type, total_amount')
-      .gte('sale_date', dateRange.start)
-      .lte('sale_date', dateRange.end)
-      .eq('payment_status', 'completed');
+    try {
+      // Revenue breakdown - just show total for wedges (no product_type in sales table)
+      const { data: salesData } = await supabase
+        .from('sales')
+        .select('total_amount')
+        .gte('date', dateRange.start)
+        .lte('date', dateRange.end);
 
-    if (salesData) {
-      const breakdown: Record<string, number> = {};
-      salesData.forEach(sale => {
-        const type = sale.product_type || 'Other';
-        breakdown[type] = (breakdown[type] || 0) + sale.total_amount;
-      });
-      setRevenueByType(breakdown);
-    }
+      if (salesData) {
+        const totalRevenue = salesData.reduce((sum, sale) => sum + (sale.total_amount || 0), 0);
+        setRevenueByType({ 'Wedges Sales': totalRevenue });
+      }
 
-    // Expenses breakdown by category
-    const { data: expensesData } = await supabase
-      .from('expenses')
-      .select(`
-        amount,
-        category:expense_categories(name)
-      `)
-      .gte('expense_date', dateRange.start)
-      .lte('expense_date', dateRange.end);
+      // Expenses breakdown by category
+      const { data: expensesData, error: expError } = await supabase
+        .from('expenses')
+        .select(`
+          amount,
+          category:expense_categories(name)
+        `)
+        .gte('expense_date', dateRange.start)
+        .lte('expense_date', dateRange.end);
 
-    if (expensesData) {
-      const breakdown: Record<string, number> = {};
-      expensesData.forEach((exp: any) => {
-        const catName = exp.category?.name || 'Unknown';
-        breakdown[catName] = (breakdown[catName] || 0) + exp.amount;
-      });
-      setExpensesByCategory(breakdown);
+      if (expError) {
+        console.warn('Could not fetch expense categories:', expError.message);
+        setExpensesByCategory({});
+        return;
+      }
+
+      if (expensesData) {
+        const breakdown: Record<string, number> = {};
+        expensesData.forEach((exp: any) => {
+          const catName = exp.category?.name || 'Unknown';
+          breakdown[catName] = (breakdown[catName] || 0) + exp.amount;
+        });
+        setExpensesByCategory(breakdown);
+      }
+    } catch (err) {
+      console.error('Error in fetchDetailedBreakdown:', err);
+      setRevenueByType({});
+      setExpensesByCategory({});
     }
   };
 
