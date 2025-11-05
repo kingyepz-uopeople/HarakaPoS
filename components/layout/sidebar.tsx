@@ -45,6 +45,11 @@ export function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50;
 
   // Load saved state from localStorage
   useEffect(() => {
@@ -66,17 +71,40 @@ export function Sidebar() {
     setIsMobileOpen(false);
   }, [pathname]);
 
-  // Close mobile menu when route changes
-  useEffect(() => {
+  // Handle touch start
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  // Handle touch move
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  // Handle touch end - swipe left to close
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    
+    if (isLeftSwipe && isMobileOpen) {
+      setIsMobileOpen(false);
+    }
+  };
+
+  // Close sidebar when clicking outside (mobile)
+  const handleOverlayClick = () => {
     setIsMobileOpen(false);
-  }, [pathname]);
+  };
 
   return (
     <>
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden p-2 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700"
+        className="fixed top-4 left-4 z-50 lg:hidden p-2 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 hover:scale-110 transition-transform active:scale-95"
         aria-label="Toggle menu"
       >
         {isMobileOpen ? (
@@ -86,11 +114,19 @@ export function Sidebar() {
         )}
       </button>
 
-      {/* Mobile Overlay */}
+      {/* Mobile Overlay - Click or tap to close */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setIsMobileOpen(false)}
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm animate-in fade-in duration-300 cursor-pointer"
+          onClick={handleOverlayClick}
+          aria-label="Close menu"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' || e.key === 'Enter') {
+              setIsMobileOpen(false);
+            }
+          }}
         />
       )}
 
@@ -100,9 +136,12 @@ export function Sidebar() {
           "fixed lg:sticky top-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transition-all duration-300 ease-in-out",
           // Desktop
           isCollapsed ? "lg:w-20" : "lg:w-64",
-          // Mobile
-          isMobileOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0"
+          // Mobile - Slide animation
+          isMobileOpen ? "translate-x-0 w-64 shadow-2xl" : "-translate-x-full lg:translate-x-0"
         )}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4">
