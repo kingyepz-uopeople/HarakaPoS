@@ -83,9 +83,10 @@ export default function DeliveryDetailsPage() {
       const saleData = {
         date: new Date().toISOString(),
         quantity_sold: delivery.quantity_kg,
+        price_per_kg: delivery.price_per_kg,
         amount: delivery.total_price,
         total_amount: delivery.total_price,
-        payment_method: "Cash",
+        payment_method: "Cash" as PaymentMethod,
         customer_id: delivery.customer_id,
         order_id: delivery.id,
       };
