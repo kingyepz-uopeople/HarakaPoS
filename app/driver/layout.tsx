@@ -57,29 +57,29 @@ export default function DriverLayout({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 dark:border-emerald-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pb-20">
       {/* Top Bar */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-4 shadow-lg sticky top-0 z-10">
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-700 dark:to-teal-700 text-white px-4 py-3 sm:py-4 shadow-lg sticky top-0 z-10">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div>
             <p className="text-xs opacity-90">Welcome back,</p>
-            <h1 className="text-lg font-bold">{driverName || "Driver"}</h1>
+            <h1 className="text-base sm:text-lg font-bold">{driverName || "Driver"}</h1>
           </div>
           <Link
             href="/driver/notifications"
             className="relative p-2 hover:bg-white/10 rounded-full transition-colors"
           >
-            <Bell className="w-6 h-6" />
+            <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
             {notifications > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                 {notifications}
@@ -95,7 +95,7 @@ export default function DriverLayout({
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-20">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-20">
         <div className="max-w-4xl mx-auto px-2 py-2">
           <div className="flex items-center justify-around">
             {navItems.map((item) => {
@@ -108,13 +108,13 @@ export default function DriverLayout({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex flex-col items-center justify-center px-4 py-2 rounded-lg transition-all min-w-[70px] ${
+                  className={`flex flex-col items-center justify-center px-3 sm:px-4 py-2 rounded-lg transition-all min-w-[60px] sm:min-w-[70px] ${
                     isActive
-                      ? "text-emerald-600 bg-emerald-50"
-                      : "text-gray-600 hover:text-emerald-600 hover:bg-gray-50"
+                      ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30"
+                      : "text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                 >
-                  <Icon className={`w-6 h-6 mb-1 ${isActive ? "stroke-[2.5]" : ""}`} />
+                  <Icon className={`w-5 h-5 sm:w-6 sm:h-6 mb-1 ${isActive ? "stroke-[2.5]" : ""}`} />
                   <span className={`text-xs ${isActive ? "font-semibold" : "font-medium"}`}>
                     {item.label}
                   </span>
