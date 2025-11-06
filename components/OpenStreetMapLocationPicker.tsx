@@ -128,14 +128,29 @@ export default function OpenStreetMapLocationPicker({
     const initGoogleMap = async () => {
       // Load Google Maps if not already loaded
       if (!window.google?.maps) {
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
-        script.async = true;
-        script.defer = true;
-        await new Promise((resolve) => {
-          script.onload = resolve;
-          document.head.appendChild(script);
-        });
+        // Check if script is already being loaded
+        const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+        if (!existingScript) {
+          const script = document.createElement('script');
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+          script.async = true;
+          script.defer = true;
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        } else {
+          // Wait for existing script to load
+          await new Promise((resolve) => {
+            const checkGoogle = setInterval(() => {
+              if (window.google?.maps) {
+                clearInterval(checkGoogle);
+                resolve(true);
+              }
+            }, 100);
+          });
+        }
       }
 
       const map = new window.google.maps.Map(googleMapRef.current!, {

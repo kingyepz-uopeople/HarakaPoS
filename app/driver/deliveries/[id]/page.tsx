@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
 import PDAPaymentFlow from "@/components/PDAPaymentFlow";
-import EmbeddedMap from "@/components/EmbeddedMap";
+import EmbeddedMapOSM from "@/components/EmbeddedMapOSM";
 import {
   MapPin,
   Phone,
@@ -246,13 +246,19 @@ export default function DeliveryDetailsPage() {
         </span>
       </div>
 
-      {/* Embedded Map - NEW! */}
-      <EmbeddedMap
-        latitude={delivery.delivery_latitude}
-        longitude={delivery.delivery_longitude}
-        address={delivery.delivery_address || delivery.location}
-        customerName={delivery.customer_name}
-        showDirections={true}
+      {/* Embedded Map - FREE OpenStreetMap! */}
+      <EmbeddedMapOSM
+        origin={{
+          lat: -1.286389, // Default Nairobi (can be replaced with driver's current location)
+          lng: 36.817223,
+          address: "Your Location"
+        }}
+        destination={{
+          lat: delivery.delivery_latitude,
+          lng: delivery.delivery_longitude,
+          address: delivery.delivery_address || delivery.location
+        }}
+        className="rounded-2xl overflow-hidden border border-gray-100"
       />
 
       {/* Customer Info */}
