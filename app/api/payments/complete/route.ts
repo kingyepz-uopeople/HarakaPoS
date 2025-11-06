@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       .insert({
         order_id: orderId,
         payment_id: payment.id,
+        receipt_number: '', // Empty string triggers auto-generation
         issued_to: order.customer?.name || 'Customer',
         issued_by: user.id,
         items: JSON.stringify(receiptItems),
