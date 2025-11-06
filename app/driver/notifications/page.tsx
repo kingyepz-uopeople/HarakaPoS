@@ -1,264 +1,525 @@
-"use client";"use client";
+"use client";"use client";"use client";
 
 
 
-import { useState, useEffect } from "react";import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+
+import { useRouter } from "next/navigation";
+
+import { createClient } from "@/lib/supabase/client";import { useState, useEffect } from "react";import { useState, useEffect } from "react";
+
+import { ArrowLeft, Bell, Package, CheckCircle, AlertCircle, TrendingDown, DollarSign, Trash2 } from "lucide-react";
 
 import { useRouter } from "next/navigation";import { useRouter } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/client";import { createClient } from "@/lib/supabase/client";
+interface Notification {
 
-import { import { 
+  id: string;import { createClient } from "@/lib/supabase/client";import { createClient } from "@/lib/supabase/client";
 
-  ArrowLeft,   ArrowLeft, 
+  type: string;
 
-  Bell,   Bell, 
+  title: string;import { import { 
+
+  message: string;
+
+  created_at: string;  ArrowLeft,   ArrowLeft, 
+
+  is_read: boolean;
+
+  link_to?: string;  Bell,   Bell, 
+
+}
 
   Package,   Package, 
 
-  CheckCircle,   CheckCircle, 
+export default function NotificationsPage() {
 
-  AlertCircle,   AlertCircle, 
+  const router = useRouter();  CheckCircle,   CheckCircle, 
 
-  TrendingDown,  TrendingDown,
+  const supabase = createClient();
 
-  DollarSign,  DollarSign,
+  const [notifications, setNotifications] = useState<Notification[]>([]);  AlertCircle,   AlertCircle, 
+
+  const [loading, setLoading] = useState(true);
+
+  const [filter, setFilter] = useState<"all" | "unread">("all");  TrendingDown,  TrendingDown,
+
+
+
+  useEffect(() => {  DollarSign,  DollarSign,
+
+    fetchNotifications();
 
   Trash2  Trash2
 
-} from "lucide-react";} from "lucide-react";
+    const channel = supabase
+
+      .channel("driver-notifications")} from "lucide-react";} from "lucide-react";
+
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
+
+        setNotifications((prev) => [payload.new as Notification, ...prev]);
+
+        if ("Notification" in window && Notification.permission === "granted") {
+
+          const newNotif = payload.new as Notification;interface Notification {interface Notification {
+
+          new Notification(newNotif.title, { body: newNotif.message, icon: "/icon-192x192.png" });
+
+        }  id: string;  id: string;
+
+      })
+
+      .subscribe();  type: string;  type: string;
 
 
 
-interface Notification {interface Notification {
+    return () => {  title: string;  title: string;
 
-  id: string;  id: string;
+      supabase.removeChannel(channel);
 
-  type: string;  type: string;
+    };  message: string;  message: string;
 
-  title: string;  title: string;
-
-  message: string;  message: string;
+  }, []);
 
   created_at: string;  created_at: string;
 
-  is_read: boolean;  is_read: boolean;
+  const fetchNotifications = async () => {
 
-  link_to?: string;  link_to?: string;
+    setLoading(true);  is_read: boolean;  is_read: boolean;
+
+    try {
+
+      const { data: { user } } = await supabase.auth.getUser();  link_to?: string;  link_to?: string;
+
+      if (!user) return;
 
 }}
 
+      const { data, error } = await supabase
 
+        .from("notifications")
 
-export default function NotificationsPage() {export default function NotificationsPage() {
+        .select("*")
 
-  const router = useRouter();  const router = useRouter();
+        .eq("user_id", user.id)export default function NotificationsPage() {export default function NotificationsPage() {
 
-  const supabase = createClient();  const supabase = createClient();
+        .order("created_at", { ascending: false })
 
-  const [notifications, setNotifications] = useState<Notification[]>([]);  const [notifications, setNotifications] = useState<Notification[]>([]);
-
-  const [loading, setLoading] = useState(true);  const [loading, setLoading] = useState(true);
-
-  const [filter, setFilter] = useState<"all" | "unread">("all");  const [filter, setFilter] = useState<"all" | "unread">("all");
-
-
-
-  useEffect(() => {  useEffect(() => {
-
-    fetchNotifications();    fetchNotifications();
+        .limit(50);  const router = useRouter();  const router = useRouter();
 
 
 
-    // Real-time subscription    // Real-time subscription
+      if (error) {  const supabase = createClient();  const supabase = createClient();
 
-    const channel = supabase    const channel = supabase
+        console.error("Error fetching notifications:", error);
 
-      .channel("driver-notifications")      .channel("driver-notifications")
+      } else {  const [notifications, setNotifications] = useState<Notification[]>([]);  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-      .on(      .on(
+        setNotifications(data || []);
 
-        "postgres_changes",        "postgres_changes",
+      }  const [loading, setLoading] = useState(true);  const [loading, setLoading] = useState(true);
+
+    } catch (error) {
+
+      console.error("Error:", error);  const [filter, setFilter] = useState<"all" | "unread">("all");  const [filter, setFilter] = useState<"all" | "unread">("all");
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };  useEffect(() => {  useEffect(() => {
+
+
+
+  const markAsRead = async (id: string) => {    fetchNotifications();    fetchNotifications();
+
+    try {
+
+      const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+
+      if (error) throw error;
+
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));    // Real-time subscription    // Real-time subscription
+
+    } catch (error) {
+
+      console.error("Error marking as read:", error);    const channel = supabase    const channel = supabase
+
+    }
+
+  };      .channel("driver-notifications")      .channel("driver-notifications")
+
+
+
+  const markAllAsRead = async () => {      .on(      .on(
+
+    try {
+
+      const { data: { user } } = await supabase.auth.getUser();        "postgres_changes",        "postgres_changes",
+
+      if (!user) return;
 
         {        {
 
-          event: "INSERT",          event: "INSERT",
+      const { error } = await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
 
-          schema: "public",          schema: "public",
+      if (error) throw error;          event: "INSERT",          event: "INSERT",
 
-          table: "notifications",          table: "notifications",
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+
+    } catch (error) {          schema: "public",          schema: "public",
+
+      console.error("Error marking all as read:", error);
+
+    }          table: "notifications",          table: "notifications",
+
+  };
 
         },        },
 
-        (payload) => {        (payload) => {
+  const deleteNotification = async (id: string) => {
 
-          setNotifications((prev) => [payload.new as Notification, ...prev]);          setNotifications((prev) => [payload.new as Notification, ...prev]);
+    try {        (payload) => {        (payload) => {
 
-          // Show browser notification if permission granted          // Show browser notification if permission granted
+      const { error } = await supabase.from("notifications").delete().eq("id", id);
 
-          if ("Notification" in window && Notification.permission === "granted") {          if ("Notification" in window && Notification.permission === "granted") {
+      if (error) throw error;          setNotifications((prev) => [payload.new as Notification, ...prev]);          setNotifications((prev) => [payload.new as Notification, ...prev]);
+
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+
+    } catch (error) {          // Show browser notification if permission granted          // Show browser notification if permission granted
+
+      console.error("Error deleting notification:", error);
+
+    }          if ("Notification" in window && Notification.permission === "granted") {          if ("Notification" in window && Notification.permission === "granted") {
+
+  };
 
             const newNotif = payload.new as Notification;            const newNotif = payload.new as Notification;
 
-            new Notification(newNotif.title, {            new Notification(newNotif.title, {
+  const handleNotificationClick = (notification: Notification) => {
 
-              body: newNotif.message,              body: newNotif.message,
+    markAsRead(notification.id);            new Notification(newNotif.title, {            new Notification(newNotif.title, {
 
-              icon: "/icon-192x192.png",              icon: "/icon-192x192.png",
+    if (notification.link_to) {
 
-            });            });
+      router.push(notification.link_to);              body: newNotif.message,              body: newNotif.message,
 
-          }          }
+    }
 
-        }        }
-
-      )      )
-
-      .subscribe();      .subscribe();
+  };              icon: "/icon-192x192.png",              icon: "/icon-192x192.png",
 
 
 
-    return () => {    return () => {
+  function getIcon(type: string) {            });            });
 
-      supabase.removeChannel(channel);      supabase.removeChannel(channel);
+    switch (type) {
 
-    };    };
+      case "low_stock":          }          }
 
-  }, []);  }, []);
+      case "expiring_soon":
+
+        return <Package className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />;        }        }
+
+      case "payment_received":
+
+      case "order_created":      )      )
+
+        return <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />;
+
+      case "wastage_alert":      .subscribe();      .subscribe();
+
+        return <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />;
+
+      case "delivery":
+
+        return <Package className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />;
+
+      case "success":    return () => {    return () => {
+
+        return <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />;
+
+      case "alert":      supabase.removeChannel(channel);      supabase.removeChannel(channel);
+
+        return <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />;
+
+      default:    };    };
+
+        return <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />;
+
+    }  }, []);  }, []);
+
+  }
 
 
 
-  const fetchNotifications = async () => {  const fetchNotifications = async () => {
+  function getBgColor(type: string, isRead: boolean) {
 
-    setLoading(true);    setLoading(true);
+    const opacity = isRead ? "bg-opacity-30" : "bg-opacity-50";  const fetchNotifications = async () => {  const fetchNotifications = async () => {
 
-    try {    try {
+    switch (type) {
 
-      const { data: { user } } = await supabase.auth.getUser();      const { data: { user } } = await supabase.auth.getUser();
+      case "low_stock":    setLoading(true);    setLoading(true);
 
-      if (!user) return;      if (!user) return;
+      case "expiring_soon":
 
+      case "wastage_alert":    try {    try {
 
+        return `bg-orange-50 ${opacity}`;
 
-      const { data, error } = await supabase      const { data, error } = await supabase
+      case "payment_received":      const { data: { user } } = await supabase.auth.getUser();      const { data: { user } } = await supabase.auth.getUser();
 
-        .from("notifications")        .from("notifications")
+      case "order_created":
 
-        .select("*")        .select("*")
+      case "success":      if (!user) return;      if (!user) return;
+
+        return `bg-green-50 ${opacity}`;
+
+      case "delivery":
+
+        return `bg-blue-50 ${opacity}`;
+
+      case "alert":      const { data, error } = await supabase      const { data, error } = await supabase
+
+        return `bg-yellow-50 ${opacity}`;
+
+      default:        .from("notifications")        .from("notifications")
+
+        return `bg-gray-50 ${opacity}`;
+
+    }        .select("*")        .select("*")
+
+  }
 
         .eq("user_id", user.id)        .eq("user_id", user.id)
 
-        .order("created_at", { ascending: false })        .order("created_at", { ascending: false })
+  function getTimeAgo(dateString: string) {
 
-        .limit(50);        .limit(50);
+    const now = new Date();        .order("created_at", { ascending: false })        .order("created_at", { ascending: false })
+
+    const date = new Date(dateString);
+
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);        .limit(50);        .limit(50);
 
 
 
-      if (error) {      if (error) {
+    if (seconds < 60) return "Just now";
 
-        console.error("Error fetching notifications:", error);        console.error("Error fetching notifications:", error);
+    const minutes = Math.floor(seconds / 60);
 
-      } else {      } else {
+    if (minutes < 60) return `${minutes}m ago`;      if (error) {      if (error) {
 
-        setNotifications(data || []);        setNotifications(data || []);
+    const hours = Math.floor(minutes / 60);
 
-      }      }
+    if (hours < 24) return `${hours}h ago`;        console.error("Error fetching notifications:", error);        console.error("Error fetching notifications:", error);
+
+    const days = Math.floor(hours / 24);
+
+    if (days < 7) return `${days}d ago`;      } else {      } else {
+
+    return date.toLocaleDateString();
+
+  }        setNotifications(data || []);        setNotifications(data || []);
+
+
+
+  const filteredNotifications = notifications.filter((n) => (filter === "all" ? true : !n.is_read));      }      }
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
     } catch (error) {    } catch (error) {
 
-      console.error("Error:", error);      console.error("Error:", error);
+  return (
 
-    } finally {    } finally {
+    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 mb-20">      console.error("Error:", error);      console.error("Error:", error);
 
-      setLoading(false);      setLoading(false);
+      <div className="flex items-center justify-between">
 
-    }    }
+        <div className="flex items-center gap-2 sm:gap-3">    } finally {    } finally {
 
-  };  };
+          <button onClick={() => router.back()} className="btn-icon btn-icon-sm btn-ghost" aria-label="Go back">
 
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />      setLoading(false);      setLoading(false);
 
+          </button>
+
+          <div>    }    }
+
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900">Notifications</h1>
+
+            {unreadCount > 0 && <p className="text-xs sm:text-sm text-gray-600">{unreadCount} unread</p>}  };  };
+
+          </div>
+
+        </div>
+
+      </div>
 
   const markAsRead = async (id: string) => {  const markAsRead = async (id: string) => {
 
-    try {    try {
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3">
 
-      const { error } = await supabase      const { error } = await supabase
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">    try {    try {
 
-        .from("notifications")        .from("notifications")
+          <div className="flex gap-2">
 
-        .update({ is_read: true })        .update({ is_read: true })
+            <button onClick={() => setFilter("all")} className={`btn btn-sm ${filter === "all" ? "btn-primary" : "btn-ghost"}`}>      const { error } = await supabase      const { error } = await supabase
 
-        .eq("id", id);        .eq("id", id);
+              All ({notifications.length})
 
+            </button>        .from("notifications")        .from("notifications")
 
+            <button onClick={() => setFilter("unread")} className={`btn btn-sm ${filter === "unread" ? "btn-primary" : "btn-ghost"}`}>
 
-      if (error) throw error;      if (error) throw error;
+              Unread ({unreadCount})        .update({ is_read: true })        .update({ is_read: true })
 
+            </button>
 
+          </div>        .eq("id", id);        .eq("id", id);
 
-      setNotifications((prev) =>      setNotifications((prev) =>
+          {unreadCount > 0 && (
 
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+            <button onClick={markAllAsRead} className="btn btn-sm btn-outline">
 
-      );      );
+              <CheckCircle className="w-4 h-4" />
 
-    } catch (error) {    } catch (error) {
+              Mark all as read      if (error) throw error;      if (error) throw error;
 
-      console.error("Error marking as read:", error);      console.error("Error marking as read:", error);
+            </button>
 
-    }    }
+          )}
 
-  };  };
+        </div>
 
-
-
-  const markAllAsRead = async () => {  const markAllAsRead = async () => {
-
-    try {    try {
-
-      const { data: { user } } = await supabase.auth.getUser();      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) return;      if (!user) return;
+      </div>      setNotifications((prev) =>      setNotifications((prev) =>
 
 
 
-      const { error } = await supabase      const { error } = await supabase
+      {loading ? (        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
 
-        .from("notifications")        .from("notifications")
+        <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
 
-        .update({ is_read: true })        .update({ is_read: true })
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>      );      );
 
-        .eq("user_id", user.id)        .eq("user_id", user.id)
+          <p className="text-gray-600">Loading notifications...</p>
 
-        .eq("is_read", false);        .eq("is_read", false);
+        </div>    } catch (error) {    } catch (error) {
 
+      ) : filteredNotifications.length === 0 ? (
 
+        <div className="bg-white rounded-2xl shadow-sm p-8 sm:p-12 text-center">      console.error("Error marking as read:", error);      console.error("Error marking as read:", error);
 
-      if (error) throw error;      if (error) throw error;
+          <Bell className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4" />
 
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No notifications</h3>    }    }
 
+          <p className="text-sm sm:text-base text-gray-500">
 
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+            {filter === "unread" ? "You're all caught up!" : "You'll see notifications here"}  };  };
 
-    } catch (error) {    } catch (error) {
+          </p>
 
-      console.error("Error marking all as read:", error);      console.error("Error marking all as read:", error);
+        </div>
 
-    }    }
+      ) : (
 
-  };  };
+        <div className="space-y-2 sm:space-y-3">  const markAllAsRead = async () => {  const markAllAsRead = async () => {
 
+          {filteredNotifications.map((notification) => (
 
+            <div    try {    try {
 
-  const deleteNotification = async (id: string) => {  const deleteNotification = async (id: string) => {
+              key={notification.id}
 
-    try {    try {
+              className={`bg-white rounded-xl sm:rounded-2xl shadow-sm border transition-all ${      const { data: { user } } = await supabase.auth.getUser();      const { data: { user } } = await supabase.auth.getUser();
 
-      const { error} = await supabase      const { error } = await supabase
+                notification.is_read ? "border-gray-100" : "border-emerald-200 shadow-md"
 
-        .from("notifications")        .from("notifications")
+              } overflow-hidden hover:shadow-lg`}      if (!user) return;      if (!user) return;
 
-        .delete()        .delete()
+            >
+
+              <div
+
+                className={`p-3 sm:p-4 ${getBgColor(notification.type, notification.is_read)} cursor-pointer`}
+
+                onClick={() => handleNotificationClick(notification)}      const { error } = await supabase      const { error } = await supabase
+
+              >
+
+                <div className="flex items-start gap-3">        .from("notifications")        .from("notifications")
+
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+
+                    {getIcon(notification.type)}        .update({ is_read: true })        .update({ is_read: true })
+
+                  </div>
+
+                  <div className="flex-1 min-w-0">        .eq("user_id", user.id)        .eq("user_id", user.id)
+
+                    <div className="flex items-start justify-between gap-2">
+
+                      <h3 className={`text-sm sm:text-base font-semibold ${notification.is_read ? "text-gray-700" : "text-gray-900"}`}>        .eq("is_read", false);        .eq("is_read", false);
+
+                        {notification.title}
+
+                      </h3>
+
+                      {!notification.is_read && <div className="flex-shrink-0 w-2 h-2 bg-emerald-600 rounded-full mt-1.5"></div>}
+
+                    </div>      if (error) throw error;      if (error) throw error;
+
+                    <p className={`text-xs sm:text-sm mt-1 ${notification.is_read ? "text-gray-500" : "text-gray-700"}`}>
+
+                      {notification.message}
+
+                    </p>
+
+                    <p className="text-xs text-gray-400 mt-2">{getTimeAgo(notification.created_at)}</p>      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+
+                  </div>
+
+                  <button    } catch (error) {    } catch (error) {
+
+                    onClick={(e) => {
+
+                      e.stopPropagation();      console.error("Error marking all as read:", error);      console.error("Error marking all as read:", error);
+
+                      deleteNotification(notification.id);
+
+                    }}    }    }
+
+                    className="btn-icon btn-icon-sm hover:bg-red-100 text-gray-400 hover:text-red-600"
+
+                    aria-label="Delete notification"  };  };
+
+                  >
+
+                    <Trash2 className="w-4 h-4" />
+
+                  </button>
+
+                </div>  const deleteNotification = async (id: string) => {  const deleteNotification = async (id: string) => {
+
+              </div>
+
+            </div>    try {    try {
+
+          ))}
+
+        </div>      const { error} = await supabase      const { error } = await supabase
+
+      )}
+
+    </div>        .from("notifications")        .from("notifications")
+
+  );
+
+}        .delete()        .delete()
+
 
         .eq("id", id);        .eq("id", id);
 
