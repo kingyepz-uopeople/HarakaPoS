@@ -19,6 +19,7 @@ export default function DeliveriesPage() {
   const [loading, setLoading] = useState(true);
   const [filterDriver, setFilterDriver] = useState("");
   const [filterStatus, setFilterStatus] = useState<OrderStatus | "all">("all");
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
   
   const supabase = createClient();
 
@@ -100,6 +101,7 @@ export default function DeliveriesPage() {
 
   // Filter orders
   const filteredOrders = orders.filter(order => {
+    if (showUnassignedOnly && order.assigned_driver) return false;
     if (filterDriver && order.assigned_driver !== filterDriver) return false;
     if (filterStatus !== "all" && order.delivery_status !== filterStatus) return false;
     return true;
@@ -110,6 +112,7 @@ export default function DeliveriesPage() {
     scheduled: orders.filter(o => o.delivery_status === "Scheduled").length,
     pending: orders.filter(o => o.delivery_status === "Pending").length,
     outForDelivery: orders.filter(o => o.delivery_status === "Out for Delivery").length,
+    unassigned: orders.filter(o => !o.assigned_driver).length,
   };
 
   if (loading) {
@@ -131,7 +134,7 @@ export default function DeliveriesPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -167,11 +170,29 @@ export default function DeliveriesPage() {
             </div>
           </div>
         </div>
+
+        <div 
+          className="bg-white p-6 rounded-lg shadow-sm border-2 border-orange-200 hover:border-orange-300 transition-colors cursor-pointer"
+          onClick={() => setShowUnassignedOnly(!showUnassignedOnly)}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-orange-600 font-medium">Unassigned</p>
+              <p className="text-2xl font-bold text-orange-700 mt-1">{stats.unassigned}</p>
+              {showUnassignedOnly && (
+                <p className="text-xs text-orange-600 mt-1">✓ Filtering</p>
+              )}
+            </div>
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <UserIcon className="w-6 h-6 text-orange-600" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Filter by Driver
@@ -204,6 +225,22 @@ export default function DeliveriesPage() {
               <option value="Pending">Pending</option>
               <option value="Out for Delivery">Out for Delivery</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Quick Filters
+            </label>
+            <button
+              onClick={() => setShowUnassignedOnly(!showUnassignedOnly)}
+              className={`w-full px-3 py-2 rounded-lg font-medium transition-colors ${
+                showUnassignedOnly
+                  ? "bg-orange-600 text-white hover:bg-orange-700"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"
+              }`}
+            >
+              {showUnassignedOnly ? "✓ " : ""}Show Unassigned Only
+            </button>
           </div>
         </div>
       </div>
@@ -277,15 +314,24 @@ export default function DeliveriesPage() {
                       <select
                         value={order.assigned_driver || ""}
                         onChange={(e) => assignDriver(order.id, e.target.value)}
-                        className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                          !order.assigned_driver
+                            ? "border-orange-300 bg-orange-50 text-orange-700 focus:ring-orange-500"
+                            : "border-gray-300 bg-white text-gray-700 focus:ring-blue-500"
+                        }`}
                       >
-                        <option value="">Assign Driver</option>
+                        <option value="">{!order.assigned_driver ? "⚠️ Assign Driver" : "Unassign"}</option>
                         {drivers.map((driver) => (
                           <option key={driver.id} value={driver.id}>
                             {driver.name}
                           </option>
                         ))}
                       </select>
+                      {order.driver && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Assigned: {order.driver.name}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <select
