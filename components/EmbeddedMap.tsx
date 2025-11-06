@@ -14,13 +14,6 @@ interface EmbeddedMapProps {
 // Google Maps API Key
 const GOOGLE_MAPS_API_KEY = "AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao";
 
-declare global {
-  interface Window {
-    google: any;
-    initMap: () => void;
-  }
-}
-
 export default function EmbeddedMap({
   latitude,
   longitude,
@@ -39,7 +32,7 @@ export default function EmbeddedMap({
 
   // Load Google Maps Script
   useEffect(() => {
-    if (window.google) {
+    if (typeof window !== 'undefined' && window.google?.maps) {
       setMapLoaded(true);
       return;
     }
@@ -75,7 +68,7 @@ export default function EmbeddedMap({
 
   // Initialize map
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current) return;
+    if (!mapLoaded || !mapRef.current || typeof window === 'undefined' || !window.google?.maps) return;
 
     const destinationLat = latitude || -1.286389; // Default to Nairobi
     const destinationLng = longitude || 36.817223;
@@ -101,7 +94,7 @@ export default function EmbeddedMap({
     });
 
     // Show directions if user location is available
-    if (showDirections && userLocation) {
+    if (showDirections && userLocation && window.google?.maps?.DirectionsService) {
       const directionsService = new window.google.maps.DirectionsService();
       const directionsRenderer = new window.google.maps.DirectionsRenderer({
         map: map,
@@ -116,11 +109,13 @@ export default function EmbeddedMap({
           travelMode: window.google.maps.TravelMode.DRIVING,
         },
         (result: any, status: any) => {
-          if (status === window.google.maps.DirectionsStatus.OK) {
+          if (status === window.google.maps.DirectionsStatus.OK && result) {
             directionsRenderer.setDirections(result);
-            const route = result.routes[0].legs[0];
-            setDistance(route.distance.text);
-            setDuration(route.duration.text);
+            const route = result.routes[0]?.legs[0];
+            if (route) {
+              setDistance(route.distance?.text || "");
+              setDuration(route.duration?.text || "");
+            }
           }
         }
       );
