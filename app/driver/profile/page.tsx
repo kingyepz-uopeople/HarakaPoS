@@ -13,10 +13,14 @@ import {
   ChevronRight,
   Bell,
   Globe,
-  Shield
+  Shield,
+  Edit,
+  Save,
+  X
 } from "lucide-react";
 
 interface DriverInfo {
+  id: string;
   name: string;
   email: string;
   phone: string;
@@ -27,6 +31,12 @@ export default function ProfilePage() {
   const [driverInfo, setDriverInfo] = useState<DriverInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    phone: "",
+  });
+  const [saving, setSaving] = useState(false);
   const supabase = createClient();
   const router = useRouter();
 
@@ -47,6 +57,7 @@ export default function ProfilePage() {
 
       if (userData) {
         setDriverInfo({
+          id: user.id,
           name: userData.name || "Driver",
           email: user.email || "N/A",
           phone: userData.phone || "N/A",
@@ -57,6 +68,48 @@ export default function ProfilePage() {
       console.error("Error loading profile:", error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function openEditModal() {
+    if (!driverInfo) return;
+    setEditFormData({
+      name: driverInfo.name,
+      phone: driverInfo.phone,
+    });
+    setShowEditModal(true);
+  }
+
+  async function handleSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!driverInfo) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({
+          name: editFormData.name.trim(),
+          phone: editFormData.phone.trim(),
+        })
+        .eq("id", driverInfo.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setDriverInfo({
+        ...driverInfo,
+        name: editFormData.name.trim(),
+        phone: editFormData.phone.trim(),
+      });
+
+      setShowEditModal(false);
+      alert("Profile updated successfully!");
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      alert("Error updating profile. Please try again.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -90,14 +143,22 @@ export default function ProfilePage() {
     <div className="p-4 space-y-6">
       {/* Profile Header */}
       <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-3xl p-8 text-white shadow-xl">
-        <div className="flex items-center space-x-4">
-          <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
-            <User className="w-10 h-10" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
+              <User className="w-10 h-10" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">{driverInfo?.name}</h1>
+              <p className="text-sm opacity-90">{driverInfo?.role}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">{driverInfo?.name}</h1>
-            <p className="text-sm opacity-90">{driverInfo?.role}</p>
-          </div>
+          <button
+            onClick={openEditModal}
+            className="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+          >
+            <Edit className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
@@ -145,7 +206,10 @@ export default function ProfilePage() {
           <h2 className="font-semibold text-gray-900">App Settings</h2>
         </div>
         <div className="divide-y divide-gray-100">
-          <button className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={() => router.push('/driver/profile/notifications')}
+            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
                 <Bell className="w-5 h-5 text-gray-600" />
@@ -155,7 +219,10 @@ export default function ProfilePage() {
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </button>
 
-          <button className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={() => router.push('/driver/profile/location')}
+            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
                 <MapPin className="w-5 h-5 text-gray-600" />
@@ -165,7 +232,10 @@ export default function ProfilePage() {
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </button>
 
-          <button className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={() => router.push('/driver/profile/language')}
+            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
                 <Globe className="w-5 h-5 text-gray-600" />
@@ -175,7 +245,10 @@ export default function ProfilePage() {
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </button>
 
-          <button className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={() => router.push('/driver/profile/privacy')}
+            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
                 <Shield className="w-5 h-5 text-gray-600" />
@@ -208,6 +281,81 @@ export default function ProfilePage() {
         <LogOut className="w-5 h-5" />
         <span>{loggingOut ? "Logging out..." : "Logout"}</span>
       </button>
+
+      {/* Edit Profile Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  placeholder="Enter your full name"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  placeholder="e.g., 0712345678"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">Format: 07XX XXX XXX or +254 XXX XXX XXX</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <p className="text-gray-900">{driverInfo?.email}</p>
+                <p className="mt-1 text-xs text-gray-500">Email cannot be changed. Contact admin if needed.</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -61,6 +61,10 @@ export default function DeliveryDetailsPage() {
           customer_name: customer?.name || "Unknown",
           customer_phone: customer?.phone || "N/A",
           location: customer?.location || "N/A",
+          // Include GPS coordinates
+          delivery_latitude: data.delivery_latitude,
+          delivery_longitude: data.delivery_longitude,
+          delivery_address: data.delivery_address || customer?.location || "N/A",
         });
       }
     } catch (error) {
@@ -166,8 +170,21 @@ export default function DeliveryDetailsPage() {
 
   function openNavigation() {
     if (!delivery) return;
-    const encodedLocation = encodeURIComponent(delivery.location);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedLocation}`, '_blank');
+    
+    // Prefer GPS coordinates if available for more accurate navigation
+    if (delivery.delivery_latitude && delivery.delivery_longitude) {
+      // Use exact GPS coordinates for navigation
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${delivery.delivery_latitude},${delivery.delivery_longitude}`;
+      window.open(url, '_blank');
+    } else if (delivery.delivery_address) {
+      // Fall back to address search
+      const encodedAddress = encodeURIComponent(delivery.delivery_address);
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+    } else {
+      // Final fallback to customer location
+      const encodedLocation = encodeURIComponent(delivery.location);
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodedLocation}`, '_blank');
+    }
   }
 
   function getStatusColor(status: string) {
@@ -252,9 +269,19 @@ export default function DeliveryDetailsPage() {
           </div>
           <div className="flex items-start space-x-3">
             <MapPin className="w-5 h-5 text-gray-400 mt-1" />
-            <div>
+            <div className="flex-1">
               <p className="text-sm text-gray-500">Location</p>
-              <p className="font-medium text-gray-900">{delivery.location}</p>
+              <p className="font-medium text-gray-900">
+                {delivery.delivery_address || delivery.location}
+              </p>
+              {delivery.delivery_latitude && delivery.delivery_longitude && (
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium">
+                    <MapPin className="w-3 h-3" />
+                    GPS: {delivery.delivery_latitude.toFixed(6)}, {delivery.delivery_longitude.toFixed(6)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

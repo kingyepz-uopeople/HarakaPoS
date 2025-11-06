@@ -111,6 +111,10 @@ export default function DeliveriesPage() {
             barcode: barcodeData?.barcode_number,
             barcode_status: barcodeData?.status,
             scan_count: barcodeData ? (scanCountMap.get(barcodeData.id) || 0) : 0,
+            // Include GPS coordinates for better navigation
+            delivery_latitude: order.delivery_latitude,
+            delivery_longitude: order.delivery_longitude,
+            delivery_address: order.delivery_address,
           };
         });
         setDeliveries(transformedData);
@@ -175,9 +179,21 @@ export default function DeliveriesPage() {
     return { style, name };
   }
 
-  function openNavigation(location: string) {
-    const encodedLocation = encodeURIComponent(location);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedLocation}`, '_blank');
+  function openNavigation(location: string, delivery?: any) {
+    // Prefer GPS coordinates if available for more accurate navigation
+    if (delivery?.delivery_latitude && delivery?.delivery_longitude) {
+      // Use exact GPS coordinates for navigation
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${delivery.delivery_latitude},${delivery.delivery_longitude}`;
+      window.open(url, '_blank');
+    } else if (delivery?.delivery_address) {
+      // Fall back to delivery address
+      const encodedAddress = encodeURIComponent(delivery.delivery_address);
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+    } else {
+      // Final fallback to location parameter
+      const encodedLocation = encodeURIComponent(location);
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodedLocation}`, '_blank');
+    }
   }
 
   if (loading) {
@@ -322,7 +338,11 @@ export default function DeliveriesPage() {
                     </Link>
                   )}
                   <button
-                    onClick={() => openNavigation(delivery.location)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openNavigation(delivery.location, delivery);
+                    }}
                     className={`bg-emerald-50 text-emerald-700 hover:bg-emerald-100 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${delivery.barcode ? '' : 'col-span-1'}`}
                   >
                     <Navigation className="w-4 h-4" />
