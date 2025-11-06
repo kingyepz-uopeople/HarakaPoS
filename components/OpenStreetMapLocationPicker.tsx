@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { MapPin, Navigation, Search } from 'lucide-react';
+import { MapPin, Navigation, Search, Link as LinkIcon, Map } from 'lucide-react';
 
 interface LocationData {
   address: string;
@@ -14,6 +14,46 @@ interface OpenStreetMapLocationPickerProps {
   onChange: (location: LocationData | null) => void;
   placeholder?: string;
 }
+
+// Google Maps API Key
+const GOOGLE_MAPS_API_KEY = "AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao";
+
+// Extract coordinates from Google Maps share link
+const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: number; lng: number } | null> => {
+  try {
+    // Handle shortened goo.gl links
+    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl')) {
+      // Follow redirect to get full URL
+      const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+      const fullUrl = response.url;
+      url = fullUrl;
+    }
+
+    // Extract coordinates from various Google Maps URL formats
+    // Format 1: @-1.286389,36.817223
+    const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (atMatch) {
+      return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+    }
+
+    // Format 2: q=-1.286389,36.817223
+    const qMatch = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (qMatch) {
+      return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+    }
+
+    // Format 3: ll=-1.286389,36.817223
+    const llMatch = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (llMatch) {
+      return { lat: parseFloat(llMatch[1]), lng: parseFloat(llMatch[2]) };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error extracting coordinates:', error);
+    return null;
+  }
+};
 
 // Nominatim API for geocoding (free OSM service)
 const searchAddress = async (query: string): Promise<any[]> => {
@@ -59,19 +99,96 @@ export default function OpenStreetMapLocationPicker({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [mapType, setMapType] = useState<'osm' | 'google'>('osm'); // Map provider
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isProcessingLink, setIsProcessingLink] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>(
     value ? [value.latitude, value.longitude] : [-1.286389, 36.817223] // Nairobi default
   );
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [markerInstance, setMarkerInstance] = useState<any>(null);
+  const [googleMap, setGoogleMap] = useState<any>(null);
+  const [googleMarker, setGoogleMarker] = useState<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const googleMapRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Initialize map when shown
+  // Initialize Google Maps when shown
   useEffect(() => {
-    if (!showMap || !mapContainerRef.current || mapInstance) return;
+    if (!showMap || mapType !== 'google' || !googleMapRef.current || googleMap) return;
+
+    const initGoogleMap = async () => {
+      // Load Google Maps if not already loaded
+      if (!window.google?.maps) {
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+        script.async = true;
+        script.defer = true;
+        await new Promise((resolve) => {
+          script.onload = resolve;
+          document.head.appendChild(script);
+        });
+      }
+
+      const map = new window.google.maps.Map(googleMapRef.current!, {
+        center: { lat: mapCenter[0], lng: mapCenter[1] },
+        zoom: 15,
+      });
+
+      const marker = new window.google.maps.Marker({
+        position: { lat: mapCenter[0], lng: mapCenter[1] },
+        map: map,
+        draggable: true,
+      });
+
+      // Handle marker drag
+      marker.addListener('dragend', async () => {
+        const position = marker.getPosition();
+        if (position) {
+          const lat = position.lat();
+          const lng = position.lng();
+          const address = await reverseGeocode(lat, lng);
+
+          onChange({
+            address,
+            latitude: lat,
+            longitude: lng,
+          });
+
+          setSearchQuery(address);
+          setMapCenter([lat, lng]);
+        }
+      });
+
+      // Handle map click
+      map.addListener('click', async (e: any) => {
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+        marker.setPosition({ lat, lng });
+
+        const address = await reverseGeocode(lat, lng);
+
+        onChange({
+          address,
+          latitude: lat,
+          longitude: lng,
+        });
+
+        setSearchQuery(address);
+        setMapCenter([lat, lng]);
+      });
+
+      setGoogleMap(map);
+      setGoogleMarker(marker);
+    };
+
+    initGoogleMap();
+  }, [showMap, mapType]);
+
+  // Initialize OpenStreetMap when shown
+  useEffect(() => {
+    if (!showMap || mapType !== 'osm' || !mapContainerRef.current || mapInstance) return;
 
     const initMap = async () => {
       const L = (await import('leaflet')).default;
@@ -141,15 +258,49 @@ export default function OpenStreetMapLocationPicker({
 
   // Update map center when location changes
   useEffect(() => {
-    if (mapInstance && markerInstance && value) {
-      mapInstance.setView([value.latitude, value.longitude], 15);
-      markerInstance.setLatLng([value.latitude, value.longitude]);
+    if (value) {
+      // Update OpenStreetMap
+      if (mapInstance && markerInstance && mapType === 'osm') {
+        mapInstance.setView([value.latitude, value.longitude], 15);
+        markerInstance.setLatLng([value.latitude, value.longitude]);
+      }
+      
+      // Update Google Maps
+      if (googleMap && googleMarker && mapType === 'google') {
+        const newCenter = { lat: value.latitude, lng: value.longitude };
+        googleMap.setCenter(newCenter);
+        googleMarker.setPosition(newCenter);
+      }
     }
-  }, [value, mapInstance, markerInstance]);
+  }, [value, mapInstance, markerInstance, googleMap, googleMarker, mapType]);
 
   // Handle search input
   const handleSearchInput = async (query: string) => {
     setSearchQuery(query);
+
+    // Check if it's a Google Maps link
+    if (query.includes('maps.app.goo.gl') || query.includes('google.com/maps') || query.includes('goo.gl/maps')) {
+      setIsProcessingLink(true);
+      const coords = await extractCoordsFromGoogleMapsLink(query);
+      
+      if (coords) {
+        const address = await reverseGeocode(coords.lat, coords.lng);
+        const locationData: LocationData = {
+          address,
+          latitude: coords.lat,
+          longitude: coords.lng,
+        };
+
+        setSearchQuery(address);
+        setMapCenter([coords.lat, coords.lng]);
+        onChange(locationData);
+        setShowMap(true); // Auto-show map when link is pasted
+      } else {
+        alert('Could not extract location from the Google Maps link. Please try copying the link again.');
+      }
+      setIsProcessingLink(false);
+      return;
+    }
     
     if (query.length < 3) {
       setSearchResults([]);
@@ -238,17 +389,25 @@ export default function OpenStreetMapLocationPicker({
         </div>
         <input
           type="text"
-          placeholder={placeholder}
+          placeholder="Paste Google Maps link or search address..."
           value={searchQuery}
           onChange={(e) => handleSearchInput(e.target.value)}
           onFocus={() => searchResults.length > 0 && setShowResults(true)}
           className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
         />
-        {isSearching && (
+        {(isSearching || isProcessingLink) && (
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
             <Search className="h-5 w-5 text-gray-400 animate-pulse" />
           </div>
         )}
+      </div>
+
+      {/* Help Text */}
+      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
+        <LinkIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+        <span>
+          💡 Tip: You can paste a Google Maps share link (e.g., https://maps.app.goo.gl/xxx) or search for an address
+        </span>
       </div>
 
       {/* Search Results Dropdown */}
@@ -271,7 +430,7 @@ export default function OpenStreetMapLocationPicker({
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           type="button"
           onClick={handleGetCurrentLocation}
@@ -290,15 +449,59 @@ export default function OpenStreetMapLocationPicker({
           <MapPin className="h-4 w-4 mr-2" />
           {showMap ? 'Hide Map' : 'Show Map'}
         </button>
+
+        {showMap && (
+          <div className="inline-flex rounded-md shadow-sm" role="group">
+            <button
+              type="button"
+              onClick={() => setMapType('osm')}
+              className={`inline-flex items-center px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-l-md ${
+                mapType === 'osm'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >
+              <Map className="h-4 w-4 mr-2" />
+              OpenStreetMap
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapType('google')}
+              className={`inline-flex items-center px-3 py-2 text-sm font-medium border-t border-r border-b border-gray-300 dark:border-gray-600 rounded-r-md ${
+                mapType === 'google'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >
+              <Map className="h-4 w-4 mr-2" />
+              Google Maps
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Map View */}
       {showMap && (
         <div className="border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
-          <div ref={mapContainerRef} className="h-64 w-full" />
-          <div className="bg-gray-50 dark:bg-gray-700 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
-            💡 Click on the map or drag the marker to set the delivery location
-          </div>
+          {/* OpenStreetMap */}
+          {mapType === 'osm' && (
+            <>
+              <div ref={mapContainerRef} className="h-64 w-full" />
+              <div className="bg-gray-50 dark:bg-gray-700 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+                💡 Click on the map or drag the marker to set the delivery location
+              </div>
+            </>
+          )}
+
+          {/* Google Maps */}
+          {mapType === 'google' && (
+            <>
+              <div ref={googleMapRef} className="h-64 w-full" />
+              <div className="bg-gray-50 dark:bg-gray-700 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+                💡 Click on the map or drag the marker to set the delivery location (Google Maps)
+              </div>
+            </>
+          )}
         </div>
       )}
 
