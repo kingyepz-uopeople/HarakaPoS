@@ -383,7 +383,222 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Add/Edit Modal would go here - simplified for brevity */}
+      {/* Add/Edit Modal */}
+      {(showAddModal || editingItem) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                {editingItem ? "Edit Item" : "Add New Item"}
+              </h2>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const data = {
+                product_name: formData.get('product_name'),
+                product_code: formData.get('product_code'),
+                category: formData.get('category'),
+                current_stock: Number(formData.get('current_stock')),
+                unit: formData.get('unit'),
+                reorder_level: Number(formData.get('reorder_level')),
+                unit_cost: Number(formData.get('unit_cost')),
+                unit_price: Number(formData.get('unit_price')),
+                is_perishable: formData.get('is_perishable') === 'on',
+                expiry_date: formData.get('expiry_date') || null,
+                wastage_quantity: Number(formData.get('wastage_quantity')) || 0,
+                last_restocked: new Date().toISOString(),
+              };
+              
+              if (editingItem) {
+                handleUpdateItem(editingItem.id, data);
+              } else {
+                handleAddItem(data);
+              }
+            }} className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="product_name"
+                    required
+                    defaultValue={editingItem?.product_name}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Product Code *
+                  </label>
+                  <input
+                    type="text"
+                    name="product_code"
+                    required
+                    defaultValue={editingItem?.product_code}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Category *
+                  </label>
+                  <input
+                    type="text"
+                    name="category"
+                    required
+                    defaultValue={editingItem?.category}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Unit *
+                  </label>
+                  <select
+                    name="unit"
+                    required
+                    defaultValue={editingItem?.unit || "kg"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="kg">Kilograms (kg)</option>
+                    <option value="g">Grams (g)</option>
+                    <option value="l">Liters (l)</option>
+                    <option value="ml">Milliliters (ml)</option>
+                    <option value="pcs">Pieces (pcs)</option>
+                    <option value="boxes">Boxes</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Current Stock *
+                  </label>
+                  <input
+                    type="number"
+                    name="current_stock"
+                    required
+                    min="0"
+                    step="0.01"
+                    defaultValue={editingItem?.current_stock || 0}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Reorder Level *
+                  </label>
+                  <input
+                    type="number"
+                    name="reorder_level"
+                    required
+                    min="0"
+                    step="0.01"
+                    defaultValue={editingItem?.reorder_level || 0}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Unit Cost (KSh) *
+                  </label>
+                  <input
+                    type="number"
+                    name="unit_cost"
+                    required
+                    min="0"
+                    step="0.01"
+                    defaultValue={editingItem?.unit_cost || 0}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Unit Price (KSh) *
+                  </label>
+                  <input
+                    type="number"
+                    name="unit_price"
+                    required
+                    min="0"
+                    step="0.01"
+                    defaultValue={editingItem?.unit_price || 0}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Wastage Quantity
+                  </label>
+                  <input
+                    type="number"
+                    name="wastage_quantity"
+                    min="0"
+                    step="0.01"
+                    defaultValue={editingItem?.wastage_quantity || 0}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="is_perishable"
+                      defaultChecked={editingItem?.is_perishable}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Perishable Item
+                    </span>
+                  </label>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Expiry Date (if perishable)
+                  </label>
+                  <input
+                    type="date"
+                    name="expiry_date"
+                    defaultValue={editingItem?.expiry_date || ''}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setEditingItem(null);
+                  }}
+                  className="btn btn-outline"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                >
+                  {editingItem ? "Update Item" : "Add Item"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
