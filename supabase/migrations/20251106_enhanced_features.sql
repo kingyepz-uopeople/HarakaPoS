@@ -53,6 +53,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS inventory_updated_at ON inventory;
 CREATE TRIGGER inventory_updated_at
   BEFORE UPDATE ON inventory
   FOR EACH ROW
@@ -121,6 +122,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS inventory_low_stock_trigger ON inventory;
 CREATE TRIGGER inventory_low_stock_trigger
   AFTER UPDATE ON inventory
   FOR EACH ROW
@@ -177,6 +179,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS payment_received_trigger ON payments;
 CREATE TRIGGER payment_received_trigger
   AFTER INSERT ON payments
   FOR EACH ROW
