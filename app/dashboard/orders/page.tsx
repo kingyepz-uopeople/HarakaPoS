@@ -222,6 +222,28 @@ export default function OrdersPage() {
     }
   };
 
+  const handleAssignDriver = async (orderId: string, driverId: string) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          assigned_driver: driverId || null,
+        })
+        .eq("id", orderId);
+
+      if (error) {
+        console.error("Error assigning driver:", error);
+        alert(`Failed to assign driver: ${error.message}`);
+        return;
+      }
+      
+      fetchOrders();
+    } catch (error: any) {
+      console.error("Error assigning driver:", error);
+      alert(`Failed to assign driver: ${error?.message || 'Unknown error'}`);
+    }
+  };
+
   const handleDeleteOrder = async (orderId: string) => {
     if (!confirm("Are you sure you want to delete this order?")) return;
 
@@ -550,7 +572,27 @@ export default function OrdersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{order.driver?.name || "Not assigned"}</div>
+                      <select
+                        value={order.assigned_driver || ""}
+                        onChange={(e) => handleAssignDriver(order.id, e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                          !order.assigned_driver
+                            ? "border-orange-300 bg-orange-50 text-orange-700 focus:ring-orange-500"
+                            : "border-gray-300 bg-white text-gray-700 focus:ring-blue-500"
+                        }`}
+                      >
+                        <option value="">{!order.assigned_driver ? "⚠️ Assign Driver" : "Unassign"}</option>
+                        {drivers.map((driver) => (
+                          <option key={driver.id} value={driver.id}>
+                            {driver.name}
+                          </option>
+                        ))}
+                      </select>
+                      {order.driver && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Assigned: {order.driver.name}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select
