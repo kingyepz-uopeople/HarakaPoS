@@ -16,7 +16,10 @@ interface OpenStreetMapLocationPickerProps {
 }
 
 // Google Maps API Key
-const GOOGLE_MAPS_API_KEY = "AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao";
+const GOOGLE_MAPS_API_KEY = "AIzaSyAOVYRIgupAurZup9y1PRh8Ismb1A4lLao";
+
+// Mapbox API Key - Add your Mapbox token here
+const MAPBOX_ACCESS_TOKEN = "pk.eyJ1Ijoia2luZ3llcHoiLCJhIjoiY21obmhrbG9lMDBpdzJrcXlvYnFmcXFwbyJ9.UBXI87gE5_0d3TOfrQoBYw"; // Replace with your actual Mapbox token
 
 // Extract coordinates from Google Maps share link
 const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: number; lng: number } | null> => {
@@ -106,7 +109,7 @@ export default function OpenStreetMapLocationPicker({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  const [mapType, setMapType] = useState<'osm' | 'google'>('osm'); // Map provider
+  const [mapType, setMapType] = useState<'osm' | 'mapbox' | 'google'>('osm'); // Map provider - 3 options!
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isProcessingLink, setIsProcessingLink] = useState(false);
@@ -117,8 +120,11 @@ export default function OpenStreetMapLocationPicker({
   const [markerInstance, setMarkerInstance] = useState<any>(null);
   const [googleMap, setGoogleMap] = useState<any>(null);
   const [googleMarker, setGoogleMarker] = useState<any>(null);
+  const [mapboxMap, setMapboxMap] = useState<any>(null);
+  const [mapboxMarker, setMapboxMarker] = useState<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<HTMLDivElement>(null);
+  const mapboxMapRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Initialize Google Maps when shown
@@ -206,6 +212,101 @@ export default function OpenStreetMapLocationPicker({
     };
 
     initGoogleMap();
+  }, [showMap, mapType]);
+
+  // Initialize Mapbox map
+  useEffect(() => {
+    if (!showMap || mapType !== 'mapbox' || !mapboxMapRef.current || mapboxMap) return;
+
+    const initMapboxMap = async () => {
+      // Load Mapbox GL JS if not already loaded
+      if (!(window as any).mapboxgl) {
+        // Check if script is already being loaded
+        const existingScript = document.querySelector('script[src*="mapbox-gl.js"]');
+        if (!existingScript) {
+          // Load CSS
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css';
+          document.head.appendChild(link);
+
+          // Load JS
+          const script = document.createElement('script');
+          script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js';
+          script.async = true;
+          script.defer = true;
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        } else {
+          // Wait for existing script to load
+          await new Promise((resolve) => {
+            const checkMapbox = setInterval(() => {
+              if ((window as any).mapboxgl) {
+                clearInterval(checkMapbox);
+                resolve(true);
+              }
+            }, 100);
+          });
+        }
+      }
+
+      const mapboxgl = (window as any).mapboxgl;
+      mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+
+      const map = new mapboxgl.Map({
+        container: mapboxMapRef.current!,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [mapCenter[1], mapCenter[0]], // Mapbox uses [lng, lat]
+        zoom: 15,
+      });
+
+      const marker = new mapboxgl.Marker({ draggable: true })
+        .setLngLat([mapCenter[1], mapCenter[0]])
+        .addTo(map);
+
+      // Handle marker drag
+      marker.on('dragend', async () => {
+        const lngLat = marker.getLngLat();
+        const lat = lngLat.lat;
+        const lng = lngLat.lng;
+
+        const address = await reverseGeocode(lat, lng);
+        onChange({
+          address,
+          latitude: lat,
+          longitude: lng,
+        });
+
+        setSearchQuery(address);
+        setMapCenter([lat, lng]);
+      });
+
+      // Handle map click
+      map.on('click', async (e: any) => {
+        const lat = e.lngLat.lat;
+        const lng = e.lngLat.lng;
+
+        marker.setLngLat([lng, lat]);
+
+        const address = await reverseGeocode(lat, lng);
+        onChange({
+          address,
+          latitude: lat,
+          longitude: lng,
+        });
+
+        setSearchQuery(address);
+        setMapCenter([lat, lng]);
+      });
+
+      setMapboxMap(map);
+      setMapboxMarker(marker);
+    };
+
+    initMapboxMap();
   }, [showMap, mapType]);
 
   // Initialize OpenStreetMap when shown
@@ -488,6 +589,18 @@ export default function OpenStreetMapLocationPicker({
             </button>
             <button
               type="button"
+              onClick={() => setMapType('mapbox')}
+              className={`inline-flex items-center px-3 py-2 text-sm font-medium border-t border-b border-gray-300 dark:border-gray-600 ${
+                mapType === 'mapbox'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >
+              <Map className="h-4 w-4 mr-2" />
+              Mapbox
+            </button>
+            <button
+              type="button"
               onClick={() => setMapType('google')}
               className={`inline-flex items-center px-3 py-2 text-sm font-medium border-t border-r border-b border-gray-300 dark:border-gray-600 rounded-r-md ${
                 mapType === 'google'
@@ -510,7 +623,17 @@ export default function OpenStreetMapLocationPicker({
             <>
               <div ref={mapContainerRef} className="h-64 w-full" />
               <div className="bg-gray-50 dark:bg-gray-700 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
-                💡 Click on the map or drag the marker to set the delivery location
+                💡 Click on the map or drag the marker to set the delivery location (FREE!)
+              </div>
+            </>
+          )}
+
+          {/* Mapbox */}
+          {mapType === 'mapbox' && (
+            <>
+              <div ref={mapboxMapRef} className="h-64 w-full" />
+              <div className="bg-gray-50 dark:bg-gray-700 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+                💡 Click on the map or drag the marker to set the delivery location (Mapbox)
               </div>
             </>
           )}
