@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { MapPin, Navigation, Search, Link as LinkIcon, Map } from 'lucide-react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface LocationData {
   address: string;
@@ -215,47 +217,15 @@ export default function OpenStreetMapLocationPicker({
   }, [showMap, mapType]);
 
   // Initialize Mapbox map
+  // Initialize Mapbox map
   useEffect(() => {
     if (!showMap || mapType !== 'mapbox' || !mapboxMapRef.current || mapboxMap) return;
 
-    const initMapboxMap = async () => {
-      // Load Mapbox GL JS if not already loaded
-      if (!(window as any).mapboxgl) {
-        // Check if script is already being loaded
-        const existingScript = document.querySelector('script[src*="mapbox-gl.js"]');
-        if (!existingScript) {
-          // Load CSS
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css';
-          document.head.appendChild(link);
-
-          // Load JS
-          const script = document.createElement('script');
-          script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js';
-          script.async = true;
-          script.defer = true;
-          await new Promise((resolve, reject) => {
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
-        } else {
-          // Wait for existing script to load
-          await new Promise((resolve) => {
-            const checkMapbox = setInterval(() => {
-              if ((window as any).mapboxgl) {
-                clearInterval(checkMapbox);
-                resolve(true);
-              }
-            }, 100);
-          });
-        }
-      }
-
-      const mapboxgl = (window as any).mapboxgl;
+    const initMapboxMap = () => {
+      // Set Mapbox access token
       mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
+      // Create map
       const map = new mapboxgl.Map({
         container: mapboxMapRef.current!,
         style: 'mapbox://styles/mapbox/streets-v12',
@@ -263,6 +233,7 @@ export default function OpenStreetMapLocationPicker({
         zoom: 15,
       });
 
+      // Create draggable marker
       const marker = new mapboxgl.Marker({ draggable: true })
         .setLngLat([mapCenter[1], mapCenter[0]])
         .addTo(map);
