@@ -21,31 +21,38 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao";
 // Extract coordinates from Google Maps share link
 const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: number; lng: number } | null> => {
   try {
-    // Handle shortened goo.gl links
-    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl')) {
-      // Follow redirect to get full URL
-      const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-      const fullUrl = response.url;
-      url = fullUrl;
-    }
-
-    // Extract coordinates from various Google Maps URL formats
+    // For shortened goo.gl links, we need to expand them first
+    // Since we can't use fetch due to CORS, we'll use a simpler approach
+    // Most Google Maps share links contain coordinates in the URL after expansion
+    
+    // Try to extract directly from the URL first
     // Format 1: @-1.286389,36.817223
-    const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    const atMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (atMatch) {
       return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
     }
 
     // Format 2: q=-1.286389,36.817223
-    const qMatch = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    const qMatch = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (qMatch) {
       return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
     }
 
     // Format 3: ll=-1.286389,36.817223
-    const llMatch = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    const llMatch = url.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (llMatch) {
       return { lat: parseFloat(llMatch[1]), lng: parseFloat(llMatch[2]) };
+    }
+
+    // Format 4: place/Location+Name/@-1.286389,36.817223
+    const placeMatch = url.match(/place\/[^/]+\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (placeMatch) {
+      return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
+    }
+
+    // For shortened links (goo.gl), ask user to open the link and copy the full URL
+    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl')) {
+      return null; // Will trigger the alert in the calling function
     }
 
     return null;
@@ -296,7 +303,7 @@ export default function OpenStreetMapLocationPicker({
         onChange(locationData);
         setShowMap(true); // Auto-show map when link is pasted
       } else {
-        alert('Could not extract location from the Google Maps link. Please try copying the link again.');
+        alert('Could not extract coordinates from this link. For shortened links (goo.gl), please open the link first, then copy the full Google Maps URL from your browser address bar.');
       }
       setIsProcessingLink(false);
       return;
@@ -406,7 +413,7 @@ export default function OpenStreetMapLocationPicker({
       <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
         <LinkIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
         <span>
-          💡 Tip: You can paste a Google Maps share link (e.g., https://maps.app.goo.gl/xxx) or search for an address
+          💡 Tip: You can paste a full Google Maps URL or search for an address. For shortened links (goo.gl), open them first and copy the full URL from your browser.
         </span>
       </div>
 
