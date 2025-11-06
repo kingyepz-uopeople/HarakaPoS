@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   Home, ShoppingCart, Package, Truck, BarChart3, Settings, LogOut, 
   ClipboardList, Users, Receipt, TrendingUp, FileText, Barcode,
-  Menu, X, ChevronLeft, ChevronRight, FileCheck
+  Menu, X, ChevronLeft, ChevronRight, FileCheck, Bell, PackageOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,13 @@ const navigation = [
   { name: "Receipts", href: "/dashboard/receipts", icon: FileCheck },
   { name: "Customers", href: "/dashboard/customers", icon: Users },
   { name: "Stock", href: "/dashboard/stock", icon: Package },
+  { name: "Inventory", href: "/dashboard/inventory", icon: PackageOpen },
+  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Deliveries", href: "/dashboard/deliveries", icon: Truck },
   { name: "Barcodes", href: "/dashboard/barcodes", icon: Barcode },
   { name: "Expenses", href: "/dashboard/expenses", icon: Receipt },
   { name: "Profit Analysis", href: "/dashboard/profit-analysis", icon: TrendingUp },
+  { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { 
     name: "eTIMS (Tax)", 
     href: "/dashboard/etims", 
