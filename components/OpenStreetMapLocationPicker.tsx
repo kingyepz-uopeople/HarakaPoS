@@ -388,6 +388,12 @@ export default function OpenStreetMapLocationPicker({
         markerInstance.setLatLng([value.latitude, value.longitude]);
       }
       
+      // Update Mapbox
+      if (mapboxMap && mapboxMarker && mapType === 'mapbox') {
+        mapboxMap.setCenter([value.longitude, value.latitude]); // Mapbox uses [lng, lat]
+        mapboxMarker.setLngLat([value.longitude, value.latitude]);
+      }
+      
       // Update Google Maps
       if (googleMap && googleMarker && mapType === 'google') {
         const newCenter = { lat: value.latitude, lng: value.longitude };
@@ -395,7 +401,7 @@ export default function OpenStreetMapLocationPicker({
         googleMarker.setPosition(newCenter);
       }
     }
-  }, [value, mapInstance, markerInstance, googleMap, googleMarker, mapType]);
+  }, [value, mapInstance, markerInstance, mapboxMap, mapboxMarker, googleMap, googleMarker, mapType]);
 
   // Handle search input
   const handleSearchInput = async (query: string) => {
