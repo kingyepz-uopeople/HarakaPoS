@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
 import PDAPaymentFlow from "@/components/PDAPaymentFlow";
+import EmbeddedMap from "@/components/EmbeddedMap";
 import {
   MapPin,
   Phone,
@@ -244,6 +245,15 @@ export default function DeliveryDetailsPage() {
           {delivery.delivery_status}
         </span>
       </div>
+
+      {/* Embedded Map - NEW! */}
+      <EmbeddedMap
+        latitude={delivery.delivery_latitude}
+        longitude={delivery.delivery_longitude}
+        address={delivery.delivery_address || delivery.location}
+        customerName={delivery.customer_name}
+        showDirections={true}
+      />
 
       {/* Customer Info */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
