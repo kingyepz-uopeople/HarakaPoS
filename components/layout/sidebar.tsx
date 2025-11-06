@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   Home, ShoppingCart, Package, Truck, BarChart3, Settings, LogOut, 
   ClipboardList, Users, Receipt, TrendingUp, FileText, Barcode,
-  Menu, X, ChevronLeft, ChevronRight
+  Menu, X, ChevronLeft, ChevronRight, FileCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Sales", href: "/dashboard/sales", icon: ShoppingCart },
   { name: "Orders", href: "/dashboard/orders", icon: ClipboardList },
+  { name: "Receipts", href: "/dashboard/receipts", icon: FileCheck },
   { name: "Customers", href: "/dashboard/customers", icon: Users },
   { name: "Stock", href: "/dashboard/stock", icon: Package },
   { name: "Deliveries", href: "/dashboard/deliveries", icon: Truck },
