@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Home, Truck, User, Bell } from "lucide-react";
+import { Home, Truck, User, Bell, Package } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -24,6 +24,23 @@ export default function DriverLayout({
 
   useEffect(() => {
     checkAuth();
+    fetchUnreadNotifications();
+
+    // Real-time notification count
+    const channel = supabase
+      .channel("driver-notification-count")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications" },
+        () => {
+          fetchUnreadNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function checkAuth() {
@@ -49,9 +66,27 @@ export default function DriverLayout({
     setLoading(false);
   }
 
+  async function fetchUnreadNotifications() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+      setNotifications(count || 0);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  }
+
   const navItems = [
     { href: "/driver", icon: Home, label: "Home", exact: true },
     { href: "/driver/deliveries", icon: Truck, label: "Deliveries", exact: false },
+    { href: "/driver/inventory", icon: Package, label: "Inventory", exact: false },
     { href: "/driver/profile", icon: User, label: "Profile", exact: false },
   ];
 
