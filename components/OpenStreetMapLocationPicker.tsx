@@ -26,40 +26,59 @@ const MAPBOX_ACCESS_TOKEN = "pk.eyJ1Ijoia2luZ3llcHoiLCJhIjoiY21obmhrbG9lMDBpdzJr
 // Extract coordinates from Google Maps share link
 const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: number; lng: number } | null> => {
   try {
-    // For shortened goo.gl links, we need to expand them first
-    // Since we can't use fetch due to CORS, we'll use a simpler approach
-    // Most Google Maps share links contain coordinates in the URL after expansion
+    let urlToProcess = url;
     
-    // Try to extract directly from the URL first
+    // For shortened goo.gl links, try to expand using a redirect service
+    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
+      try {
+        // Use a CORS-friendly redirect resolver
+        const response = await fetch(`https://unshorten.me/json/${encodeURIComponent(url)}`);
+        const data = await response.json();
+        if (data.resolved_url) {
+          urlToProcess = data.resolved_url;
+        }
+      } catch (expandError) {
+        // If expansion fails, try alternative method
+        try {
+          const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+          const data = await response.json();
+          // Extract URL from meta redirect or Location header
+          const urlMatch = data.contents?.match(/URL=([^"]+)/) || data.contents?.match(/href="([^"]+)/);
+          if (urlMatch && urlMatch[1]) {
+            urlToProcess = urlMatch[1];
+          }
+        } catch (altError) {
+          console.log('Could not expand shortened URL, trying pattern matching...');
+        }
+      }
+    }
+    
+    // Try to extract coordinates from the URL (either original or expanded)
     // Format 1: @-1.286389,36.817223
-    const atMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const atMatch = urlToProcess.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (atMatch) {
       return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
     }
 
     // Format 2: q=-1.286389,36.817223
-    const qMatch = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const qMatch = urlToProcess.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (qMatch) {
       return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
     }
 
     // Format 3: ll=-1.286389,36.817223
-    const llMatch = url.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const llMatch = urlToProcess.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (llMatch) {
       return { lat: parseFloat(llMatch[1]), lng: parseFloat(llMatch[2]) };
     }
 
     // Format 4: place/Location+Name/@-1.286389,36.817223
-    const placeMatch = url.match(/place\/[^/]+\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const placeMatch = urlToProcess.match(/place\/[^/]+\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (placeMatch) {
       return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
     }
 
-    // For shortened links (goo.gl), ask user to open the link and copy the full URL
-    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl')) {
-      return null; // Will trigger the alert in the calling function
-    }
-
+    // If all extraction attempts fail
     return null;
   } catch (error) {
     console.error('Error extracting coordinates:', error);
@@ -396,7 +415,12 @@ export default function OpenStreetMapLocationPicker({
         onChange(locationData);
         setShowMap(true); // Auto-show map when link is pasted
       } else {
-        alert('Could not extract coordinates from this link. For shortened links (goo.gl), please open the link first, then copy the full Google Maps URL from your browser address bar.');
+          // More helpful error message with manual workaround
+          const isShortened = query.includes('goo.gl');
+          const message = isShortened 
+            ? 'Could not extract coordinates from this shortened link.\n\n✅ Easy Fix:\n1. Open the link in a new tab\n2. Copy the full URL from your browser (it will be longer)\n3. Paste that URL here instead\n\nOr use the Search/Current Location buttons below.'
+            : 'Could not extract coordinates from this link. Please try:\n- Searching for the address instead\n- Using "Current Location" button\n- Clicking on the map after showing it';
+          alert(message);
       }
       setIsProcessingLink(false);
       return;
