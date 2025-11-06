@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Customer } from "@/lib/types";
 import { Plus, X, Phone, MapPin, User as UserIcon, Edit, Trash2, Search } from "lucide-react";
+import OpenStreetMapLocationPicker from "@/components/OpenStreetMapLocationPicker";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -18,6 +19,11 @@ export default function CustomersPage() {
     phone: "",
     location: "",
   });
+  const [locationData, setLocationData] = useState<{
+    address: string;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const supabase = createClient();
 
@@ -65,6 +71,7 @@ export default function CustomersPage() {
     setModalMode("add");
     setSelectedCustomer(null);
     setFormData({ name: "", phone: "", location: "" });
+    setLocationData(null);
     setShowModal(true);
   };
 
@@ -76,6 +83,7 @@ export default function CustomersPage() {
       phone: customer.phone,
       location: customer.location || "",
     });
+    setLocationData(null); // Can be enhanced later to parse stored coordinates
     setShowModal(true);
   };
 
@@ -83,18 +91,22 @@ export default function CustomersPage() {
     setShowModal(false);
     setSelectedCustomer(null);
     setFormData({ name: "", phone: "", location: "" });
+    setLocationData(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
+      // Use location from picker if available, otherwise use text input
+      const locationToSave = locationData?.address || formData.location.trim() || null;
+
       if (modalMode === "add") {
         // Create new customer
         const { error } = await supabase.from("customers").insert([{
           name: formData.name.trim(),
           phone: formData.phone.trim(),
-          location: formData.location.trim() || null,
+          location: locationToSave,
         }]);
 
         if (error) throw error;
@@ -108,7 +120,7 @@ export default function CustomersPage() {
           .update({
             name: formData.name.trim(),
             phone: formData.phone.trim(),
-            location: formData.location.trim() || null,
+            location: locationToSave,
           })
           .eq("id", selectedCustomer.id);
 
@@ -382,18 +394,17 @@ export default function CustomersPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
                     Location (Optional)
                   </label>
-                  <input
-                    id="location"
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="Nairobi CBD"
+                  <OpenStreetMapLocationPicker
+                    value={locationData || undefined}
+                    onChange={setLocationData}
+                    placeholder="Paste Google Maps link or search address..."
                   />
-                  <p className="mt-1 text-xs text-gray-500">Used for delivery location suggestions</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    💡 Paste a Google Maps share link or search for the customer's location
+                  </p>
                 </div>
 
                 <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">

@@ -29,12 +29,36 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
   const [distance, setDistance] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
   const [routeLoaded, setRouteLoaded] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
+
+  // Get driver's current location
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setUseCurrentLocation(true);
+        },
+        (error) => {
+          console.log('Could not get current location, using default:', error);
+          setUseCurrentLocation(false);
+        }
+      );
+    }
+  }, []);
+
+  // Determine the actual origin to use
+  const actualOrigin = useCurrentLocation && currentLocation ? currentLocation : origin;
 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    // Initialize map
-    const map = L.map(mapRef.current).setView([origin.lat, origin.lng], 13);
+    // Initialize map centered on destination
+    const map = L.map(mapRef.current).setView([destination.lat, destination.lng], 13);
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -47,7 +71,7 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
     // Add routing
     const routing = (L as any).Routing.control({
       waypoints: [
-        L.latLng(origin.lat, origin.lng),
+        L.latLng(actualOrigin.lat, actualOrigin.lng),
         L.latLng(destination.lat, destination.lng)
       ],
       routeWhileDragging: false,
@@ -61,7 +85,7 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
       createMarker: function(i: number, waypoint: any) {
         const icon = L.icon({
           iconUrl: i === 0 
-            ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
+            ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'
             : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
           shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
           iconSize: [25, 41],
@@ -72,10 +96,13 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
 
         const marker = L.marker(waypoint.latLng, { icon });
         
-        if (i === 0 && origin.address) {
-          marker.bindPopup(`<strong>Start:</strong><br>${origin.address}`);
+        if (i === 0) {
+          const startText = useCurrentLocation 
+            ? '<strong>📍 Your Current Location</strong><br>(Driver GPS)' 
+            : `<strong>Start:</strong><br>${origin.address || 'Default Location'}`;
+          marker.bindPopup(startText);
         } else if (i === 1 && destination.address) {
-          marker.bindPopup(`<strong>Destination:</strong><br>${destination.address}`);
+          marker.bindPopup(`<strong>🎯 Destination:</strong><br>${destination.address}`);
         }
         
         return marker;
@@ -124,7 +151,7 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
         mapInstance.current = null;
       }
     };
-  }, [origin.lat, origin.lng, destination.lat, destination.lng]);
+  }, [actualOrigin.lat, actualOrigin.lng, destination.lat, destination.lng, useCurrentLocation]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
@@ -165,6 +192,14 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
           </div>
           
           <div className="space-y-2 text-sm">
+            {useCurrentLocation && (
+              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+                <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full">
+                  📍 Using Your GPS Location
+                </span>
+              </div>
+            )}
+            
             {distance && (
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-gray-500" />
