@@ -51,14 +51,17 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
     }
   }, []);
 
-  // Determine the actual origin to use
-  const actualOrigin = useCurrentLocation && currentLocation ? currentLocation : origin;
-
+  // Initialize map only once
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    // Initialize map centered on destination
-    const map = L.map(mapRef.current).setView([destination.lat, destination.lng], 13);
+    // Choose a safe initial center: destination if valid, else origin, else Nairobi default
+    const destValid = destination && typeof destination.lat === 'number' && typeof destination.lng === 'number' && !Number.isNaN(destination.lat) && !Number.isNaN(destination.lng);
+    const initialCenter: [number, number] = destValid
+      ? [destination.lat, destination.lng]
+      : [origin.lat, origin.lng];
+
+    const map = L.map(mapRef.current).setView(initialCenter, 13);
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -68,10 +71,43 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
 
     mapInstance.current = map;
 
-    // Add routing
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+    };
+  }, []);
+
+  // Create or update routing when we have a valid start and destination
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    const start = (useCurrentLocation && currentLocation) ? currentLocation : origin;
+    const startValid = start && typeof start.lat === 'number' && typeof start.lng === 'number' && !Number.isNaN(start.lat) && !Number.isNaN(start.lng);
+    const destValid = destination && typeof destination.lat === 'number' && typeof destination.lng === 'number' && !Number.isNaN(destination.lat) && !Number.isNaN(destination.lng);
+
+    // Wait until we have both points
+    if (!startValid || !destValid) {
+      return;
+    }
+
+    // If a routing control exists, remove it before creating a new one
+    if (routingControl.current) {
+      try {
+        map.removeControl(routingControl.current);
+      } catch (e) {
+        // ignore
+      }
+      routingControl.current = null;
+    }
+
+    setRouteLoaded(false);
+
     const routing = (L as any).Routing.control({
       waypoints: [
-        L.latLng(actualOrigin.lat, actualOrigin.lng),
+        L.latLng(start.lat, start.lng),
         L.latLng(destination.lat, destination.lng)
       ],
       routeWhileDragging: false,
@@ -109,17 +145,14 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
       }
     }).addTo(map);
 
-    // Listen for route calculation
     routing.on('routesfound', function(e: any) {
       const routes = e.routes;
       if (routes && routes.length > 0) {
         const route = routes[0];
         
-        // Calculate distance in km
         const distanceKm = (route.summary.totalDistance / 1000).toFixed(2);
         setDistance(`${distanceKm} km`);
         
-        // Calculate duration in minutes
         const durationMin = Math.round(route.summary.totalTime / 60);
         const hours = Math.floor(durationMin / 60);
         const mins = durationMin % 60;
@@ -141,21 +174,27 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
 
     routingControl.current = routing;
 
-    // Cleanup
     return () => {
       if (routingControl.current) {
-        map.removeControl(routingControl.current);
-      }
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
+        try {
+          map.removeControl(routingControl.current);
+        } catch (e) {
+          // ignore
+        }
+        routingControl.current = null;
       }
     };
-  }, [actualOrigin.lat, actualOrigin.lng, destination.lat, destination.lng, useCurrentLocation]);
+  }, [useCurrentLocation, currentLocation?.lat, currentLocation?.lng, origin.lat, origin.lng, destination.lat, destination.lng]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
+
+  // Determine if we have enough info to attempt routing (for loading UI)
+  const hasStartForUi = useCurrentLocation
+    ? (currentLocation?.lat !== undefined && currentLocation?.lng !== undefined)
+    : (typeof origin.lat === 'number' && typeof origin.lng === 'number');
+  const hasDestForUi = (typeof destination.lat === 'number' && typeof destination.lng === 'number');
 
   return (
     <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50' : ''} ${className}`}>
@@ -228,7 +267,7 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
       )}
 
       {/* Loading Indicator */}
-      {!routeLoaded && (
+      {!routeLoaded && hasStartForUi && hasDestForUi && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[1000]">
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
             <div className="flex items-center gap-3">
