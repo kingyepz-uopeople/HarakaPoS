@@ -106,8 +106,11 @@ export default function ProfilePage() {
       setShowEditModal(false);
       alert("Profile updated successfully!");
     } catch (error) {
-      console.error("Error updating profile:", error);
-      alert("Error updating profile. Please try again.");
+      // Surface a clearer error message in dev/production
+      const err = error as any;
+      console.error("Error updating profile:", err);
+      const msg = err?.message || err?.hint || (typeof err === "string" ? err : "");
+      alert(`Error updating profile${msg ? `: ${msg}` : ". Please try again."}`);
     } finally {
       setSaving(false);
     }
