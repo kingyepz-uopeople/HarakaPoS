@@ -37,11 +37,11 @@ async function getDashboardStats() {
   const totalSold = sales?.reduce((sum, sale) => sum + sale.quantity_sold, 0) || 0;
   const remainingStock = totalStock - totalSold;
 
-  // Get pending deliveries
+  // Get pending deliveries (orders not yet delivered)
   const { count: pendingDeliveries } = await supabase
-    .from("deliveries")
+    .from("orders")
     .select("*", { count: "exact", head: true })
-    .neq("status", "Delivered");
+    .in("delivery_status", ["Scheduled", "Pending", "Out for Delivery", "Arrived"]);
 
   // Get this month's sales
   const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)

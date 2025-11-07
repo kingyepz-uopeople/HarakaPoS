@@ -136,8 +136,11 @@ export default function DeliveryDetailsPage() {
 
       if (orderError) throw orderError;
 
-      alert("Delivery started successfully!");
-      router.push("/driver/deliveries");
+      // Keep user on this page so GPS tracking can begin immediately.
+      // Previously we redirected which prevented initial location broadcasts.
+      alert("Delivery started successfully! Tracking has begun.");
+      // Reload delivery to reflect new status so hook enables.
+      await loadDelivery(delivery.id);
     } catch (error: any) {
       console.error("Error starting delivery:", error);
       alert("Error starting delivery: " + error.message);
@@ -196,8 +199,23 @@ export default function DeliveryDetailsPage() {
     }
   }
 
-  function openNavigation() {
+  async function openNavigation() {
     if (!delivery) return;
+
+    // If delivery hasn't started yet, mark as Out for Delivery so admin can track
+    if (delivery.delivery_status !== 'Out for Delivery') {
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({ delivery_status: 'Out for Delivery' })
+          .eq('id', delivery.id);
+        if (!error) {
+          setDelivery({ ...delivery, delivery_status: 'Out for Delivery' });
+        }
+      } catch (e) {
+        console.error('Failed to set Out for Delivery on navigate:', e);
+      }
+    }
     
     // Prefer GPS coordinates if available for more accurate navigation
     if (delivery.delivery_latitude && delivery.delivery_longitude) {
