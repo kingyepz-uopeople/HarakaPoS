@@ -7,6 +7,7 @@ import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
 import PDAPaymentFlow from "@/components/PDAPaymentFlow";
 import EmbeddedMapOSM from "@/components/EmbeddedMapOSM";
+import { useDriverLocationTracking } from "@/lib/hooks/useDriverLocationTracking";
 import {
   MapPin,
   Phone,
@@ -18,7 +19,8 @@ import {
   Calendar,
   DollarSign,
   CheckCircle2,
-  Truck
+  Truck,
+  Radio
 } from "lucide-react";
 
 export default function DeliveryDetailsPage() {
@@ -31,6 +33,31 @@ export default function DeliveryDetailsPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash");
   const [customerNotes, setCustomerNotes] = useState("");
   const supabase = createClient();
+
+  // Real-time location tracking
+  const isOutForDelivery = delivery?.delivery_status === "Out for Delivery";
+  const { currentPosition, isTracking, error: trackingError, hasArrived } = useDriverLocationTracking({
+    orderId: params.id as string,
+    enabled: isOutForDelivery,
+    updateInterval: 5000, // Update every 5 seconds
+    geofenceRadius: 50, // 50 meters
+    onArrival: async () => {
+      // Auto-update status when driver arrives
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({ delivery_status: 'Arrived' })
+          .eq('id', params.id as string);
+        
+        if (!error) {
+          // Reload delivery to show new status
+          loadDelivery(params.id as string);
+        }
+      } catch (err) {
+        console.error('Error updating arrival status:', err);
+      }
+    },
+  });
 
   useEffect(() => {
     if (params.id) {
@@ -241,9 +268,49 @@ export default function DeliveryDetailsPage() {
 
       {/* Status Badge */}
       <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
-        <span className={`inline-block px-3 py-1.5 rounded-full text-sm font-medium border ${getStatusColor(delivery.delivery_status)}`}>
-          {delivery.delivery_status}
-        </span>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <span className={`inline-block px-3 py-1.5 rounded-full text-sm font-medium border ${getStatusColor(delivery.delivery_status)}`}>
+            {delivery.delivery_status}
+          </span>
+          
+          {/* GPS Tracking Indicator */}
+          {isOutForDelivery && (
+            <div className="flex items-center gap-2">
+              {isTracking ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
+                  <Radio className="w-4 h-4 text-green-600 animate-pulse" />
+                  <span className="text-xs font-medium text-green-700">
+                    GPS Tracking Active
+                  </span>
+                </div>
+              ) : trackingError ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full">
+                  <Radio className="w-4 h-4 text-red-600" />
+                  <span className="text-xs font-medium text-red-700">
+                    GPS Error
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full">
+                  <Radio className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs font-medium text-gray-500">
+                    Connecting...
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Arrival Notification */}
+          {hasArrived && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full">
+              <CheckCircle2 className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-medium text-blue-700">
+                You've arrived!
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Embedded Map - FREE OpenStreetMap! */}

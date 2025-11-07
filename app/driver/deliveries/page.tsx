@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
+import { getOptimizedRoute } from "@/utils/routeOptimization";
 import Link from "next/link";
 import {
   MapPin,
@@ -13,7 +14,9 @@ import {
   ChevronRight,
   Filter,
   QrCode,
-  Camera
+  Camera,
+  Route,
+  Zap
 } from "lucide-react";
 
 type FilterType = "all" | "pending" | "active";
@@ -31,6 +34,9 @@ interface Delivery {
   barcode?: string;
   barcode_status?: string;
   scan_count?: number;
+  delivery_latitude?: number;
+  delivery_longitude?: number;
+  delivery_address?: string;
 }
 
 export default function DeliveriesPage() {
@@ -38,6 +44,8 @@ export default function DeliveriesPage() {
   const [filteredDeliveries, setFilteredDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizedRoute, setOptimizedRoute] = useState<any>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -196,6 +204,74 @@ export default function DeliveriesPage() {
     }
   }
 
+  async function handleOptimizeRoute() {
+    if (filteredDeliveries.length < 2) {
+      alert('Need at least 2 deliveries to optimize route');
+      return;
+    }
+
+    setOptimizing(true);
+
+    try {
+      // Get current location
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      });
+
+      const startLocation = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+
+      // Convert deliveries to locations
+      const locations = filteredDeliveries
+        .filter(d => d.delivery_latitude && d.delivery_longitude)
+        .map(d => ({
+          id: d.id,
+          latitude: d.delivery_latitude!,
+          longitude: d.delivery_longitude!,
+          address: d.delivery_address || d.location,
+          priority: d.status === 'Out for Delivery' ? 5 : 1, // Prioritize in-progress
+        }));
+
+      if (locations.length < 2) {
+        alert('Not enough deliveries with GPS coordinates');
+        return;
+      }
+
+      // Optimize route
+      const result = await getOptimizedRoute(startLocation, locations, {
+        useOSRM: true,
+        avgSpeedKmh: 25, // Nairobi traffic is slow
+        respectPriority: true,
+      });
+
+      setOptimizedRoute(result);
+
+      // Reorder filteredDeliveries to match optimized route
+      const optimizedDeliveries = result.locations.map(loc =>
+        filteredDeliveries.find(d => d.id === loc.id)!
+      );
+
+      // Add any deliveries without coordinates at the end
+      const withoutCoords = filteredDeliveries.filter(
+        d => !d.delivery_latitude || !d.delivery_longitude
+      );
+
+      setFilteredDeliveries([...optimizedDeliveries, ...withoutCoords]);
+
+      alert(
+        `Route optimized! Distance: ${result.totalDistance.toFixed(1)} km, ` +
+        `Est. time: ${Math.round(result.estimatedDuration)} min`
+      );
+    } catch (error) {
+      console.error('Route optimization error:', error);
+      alert('Failed to optimize route. Using current order.');
+    } finally {
+      setOptimizing(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -242,6 +318,48 @@ export default function DeliveriesPage() {
           Active
         </button>
       </div>
+
+      {/* Route Optimization Banner */}
+      {filteredDeliveries.length >= 2 && (
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-2xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-white p-2 rounded-full">
+                <Route className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  {filteredDeliveries.length} Deliveries
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {optimizedRoute 
+                    ? `Optimized: ${optimizedRoute.totalDistance.toFixed(1)} km, ${Math.round(optimizedRoute.estimatedDuration)} min`
+                    : 'Get the fastest route for all stops'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleOptimizeRoute}
+              disabled={optimizing}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {optimizing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span className="text-sm font-medium">Optimizing...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {optimizedRoute ? 'Re-optimize' : 'Optimize Route'}
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Deliveries List */}
       {filteredDeliveries.length === 0 ? (

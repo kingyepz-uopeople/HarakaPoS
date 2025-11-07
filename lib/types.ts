@@ -91,6 +91,10 @@ export interface Order {
   delivery_latitude?: number; // GPS latitude for delivery location
   delivery_longitude?: number; // GPS longitude for delivery location
   assigned_driver?: string;
+  tracking_url?: string; // Public tracking URL
+  estimated_arrival_time?: string; // Calculated ETA
+  route_distance_km?: number; // Route distance in km
+  route_duration_minutes?: number; // Route duration in minutes
   created_at?: string;
   updated_at?: string;
   updated_by?: string; // User who last updated the order
