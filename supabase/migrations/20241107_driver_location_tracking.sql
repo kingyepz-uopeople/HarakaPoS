@@ -25,6 +25,11 @@ CREATE INDEX IF NOT EXISTS idx_driver_locations_timestamp ON driver_locations(ti
 -- Enable Row Level Security
 ALTER TABLE driver_locations ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS driver_locations_insert_own ON driver_locations;
+DROP POLICY IF EXISTS driver_locations_update_own ON driver_locations;
+DROP POLICY IF EXISTS driver_locations_read_all ON driver_locations;
+
 -- RLS Policy: Drivers can insert/update their own locations
 CREATE POLICY driver_locations_insert_own ON driver_locations
   FOR INSERT
@@ -36,7 +41,7 @@ CREATE POLICY driver_locations_update_own ON driver_locations
   TO authenticated
   USING (auth.uid() = driver_id);
 
--- RLS Policy: Anyone can read driver locations (for public tracking page)
+-- RLS Policy: Anyone can read driver locations (for admin tracking)
 CREATE POLICY driver_locations_read_all ON driver_locations
   FOR SELECT
   TO anon, authenticated
@@ -54,13 +59,35 @@ SECURITY DEFINER
 SET search_path = public;
 
 -- Trigger to auto-update updated_at
+-- Drop trigger if it already exists (idempotent)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'driver_locations_updated_at'
+  ) THEN
+    DROP TRIGGER driver_locations_updated_at ON driver_locations;
+  END IF;
+END;$$;
+
 CREATE TRIGGER driver_locations_updated_at
   BEFORE UPDATE ON driver_locations
   FOR EACH ROW
   EXECUTE FUNCTION update_driver_location_timestamp();
 
 -- Enable Realtime for driver_locations
-ALTER PUBLICATION supabase_realtime ADD TABLE driver_locations;
+-- Add table to publication only if not already present
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'driver_locations'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE driver_locations;
+  END IF;
+END;$$;
 
 -- Create view for latest driver positions per order
 CREATE OR REPLACE VIEW latest_driver_positions 
