@@ -72,6 +72,8 @@ export interface Customer {
   name: string;
   phone: string;
   location?: string;
+  latitude?: number; // Latitude coordinate for delivery
+  longitude?: number; // Longitude coordinate for delivery
   kra_pin?: string; // Optional KRA PIN for tax invoices
   created_at?: string;
 }

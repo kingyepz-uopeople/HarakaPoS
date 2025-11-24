@@ -107,6 +107,8 @@ export default function CustomersPage() {
           name: formData.name.trim(),
           phone: formData.phone.trim(),
           location: locationToSave,
+          latitude: locationData?.latitude || null,
+          longitude: locationData?.longitude || null,
         }]);
 
         if (error) throw error;
@@ -121,6 +123,8 @@ export default function CustomersPage() {
             name: formData.name.trim(),
             phone: formData.phone.trim(),
             location: locationToSave,
+            latitude: locationData?.latitude || null,
+            longitude: locationData?.longitude || null,
           })
           .eq("id", selectedCustomer.id);
 

@@ -150,7 +150,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed lg:sticky top-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transition-all duration-300 ease-in-out",
+          "fixed lg:sticky top-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transition-all duration-300 ease-in-out flex flex-col",
           // Desktop
           isCollapsed ? "lg:w-20" : "lg:w-64",
           // Mobile - Slide animation
@@ -189,7 +189,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 min-h-0">
           {navigation.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
             const Icon = item.icon;
@@ -215,7 +215,7 @@ export function Sidebar() {
         </nav>
 
         {/* Sign Out */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
           {/* Mobile Swipe Hint */}
           {isMobileOpen && (
             <div className="lg:hidden mb-3 flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400 animate-pulse">

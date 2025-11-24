@@ -701,7 +701,23 @@ export default function OrdersPage() {
                   <select
                     required
                     value={formData.customer_id}
-                    onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
+                    onChange={(e) => {
+                      const customerId = e.target.value;
+                      const selectedCustomer = customers.find(c => c.id === customerId);
+                      
+                      // Auto-populate delivery location from customer if available
+                      if (selectedCustomer?.location) {
+                        setFormData({ 
+                          ...formData, 
+                          customer_id: customerId,
+                          delivery_address: selectedCustomer.location,
+                          delivery_latitude: selectedCustomer.latitude || null,
+                          delivery_longitude: selectedCustomer.longitude || null,
+                        });
+                      } else {
+                        setFormData({ ...formData, customer_id: customerId });
+                      }
+                    }}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                   >
                     <option value="">Select a customer</option>
@@ -800,6 +816,14 @@ export default function OrdersPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Delivery Location
                   </label>
+                  {formData.delivery_address && formData.customer_id && (
+                    <div className="mb-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md flex items-start gap-2">
+                      <MapPin className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        ✅ Location auto-filled from customer profile. You can change it below if needed.
+                      </p>
+                    </div>
+                  )}
                   <OpenStreetMapLocationPicker
                     value={
                       formData.delivery_address

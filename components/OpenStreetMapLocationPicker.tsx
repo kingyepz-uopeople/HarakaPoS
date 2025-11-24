@@ -402,6 +402,9 @@ export default function OpenStreetMapLocationPicker({
   // Update map center when location changes
   useEffect(() => {
     if (value) {
+      // Update mapCenter state
+      setMapCenter([value.latitude, value.longitude]);
+      
       // Update OpenStreetMap
       if (mapInstance && markerInstance && mapType === 'osm') {
         mapInstance.setView([value.latitude, value.longitude], 15);
