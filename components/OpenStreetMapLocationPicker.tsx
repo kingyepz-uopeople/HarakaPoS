@@ -30,15 +30,15 @@ const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: numb
     
     console.log('🔍 Processing Google Maps URL:', urlToProcess);
     
-    // For shortened goo.gl links, inform user to use full URL
+    // For shortened goo.gl links, we can't extract coordinates reliably
     if (urlToProcess.includes('maps.app.goo.gl') || urlToProcess.includes('goo.gl/maps')) {
-      console.log('⚠️ Shortened Google Maps link detected');
-      console.log('💡 For best results, open the link in your browser and copy the full URL from the address bar');
+      console.log('⚠️ Shortened Google Maps link detected - cannot extract coordinates');
       
-      // Still try to extract if there's a fallback pattern
-      // Some shortened URLs might have coordinates in a different format
-      // But we won't make external fetch calls that can fail
-      alert('📍 Shortened Google Maps Link Detected\n\nFor accurate location:\n1. Open this link in your browser\n2. Copy the full URL from the address bar (it will be much longer)\n3. Paste the full URL here\n\nThe full URL contains the exact coordinates.');
+      // Show helpful message
+      setTimeout(() => {
+        alert('📍 Cannot Use Shortened Google Maps Links\n\n✅ EASY FIX - Use one of these instead:\n\n1️⃣ SEARCH: Just type the place name (e.g., "Galanos Hotel Kangema")\n\n2️⃣ FULL URL: Open the short link in browser, copy the FULL URL\n\n3️⃣ CLICK MAP: Click "Show Map" and click on the location\n\n4️⃣ GPS: Click "Use Current Location" if you\'re there\n\nThe field will be cleared so you can try again.');
+      }, 100);
+      
       return null;
     }
     
@@ -71,7 +71,14 @@ const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: numb
       return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
     }
 
-    // Format 5: Just coordinates separated by comma (direct input)
+    // Format 5: 3d-0.6859494!4d36.9697061 (encoded coordinates)
+    const encodedMatch = urlToProcess.match(/3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)/);
+    if (encodedMatch) {
+      console.log('✅ Extracted coordinates using 3d/4d encoded pattern');
+      return { lat: parseFloat(encodedMatch[1]), lng: parseFloat(encodedMatch[2]) };
+    }
+
+    // Format 6: Just coordinates separated by comma (direct input)
     const coordMatch = urlToProcess.match(/^(-?\d+\.?\d+)\s*,\s*(-?\d+\.?\d+)$/);
     if (coordMatch) {
       console.log('✅ Extracted coordinates from direct input');
@@ -448,10 +455,11 @@ export default function OpenStreetMapLocationPicker({
         onChange(locationData);
         setShowMap(true); // Auto-show map when link is pasted
       } else {
-          // More helpful error message with manual workaround
+          // Clear the input field and show helpful message
+          setSearchQuery('');
           const isShortened = query.includes('goo.gl');
           const message = isShortened 
-            ? 'Could not extract coordinates from this shortened link.\n\n✅ Easy Fix:\n1. Open the link in a new tab\n2. Copy the full URL from your browser (it will be longer)\n3. Paste that URL here instead\n\nOr use the Search/Current Location buttons below.'
+            ? '❌ Shortened Google Maps links cannot be processed.\n\n✅ Please use ONE of these methods instead:\n\n1. Search by name (e.g., "Kangema Town")\n2. Paste the FULL Google Maps URL (not shortened)\n3. Click directly on the map below\n4. Use "Current Location" button'
             : 'Could not extract coordinates from this link. Please try:\n- Searching for the address instead\n- Using "Current Location" button\n- Clicking on the map after showing it';
           alert(message);
       }
