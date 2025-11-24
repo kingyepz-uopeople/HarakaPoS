@@ -311,19 +311,25 @@ export default function AdminTrackDriverPage() {
 
                 {/* Live Map (Google Maps) */}
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-                  <GoogleLiveMap
-                    className="w-full h-[500px] bg-gray-100"
-                    destination={{
-                      lat: selectedOrder.delivery_latitude,
-                      lng: selectedOrder.delivery_longitude,
-                      address: selectedOrder.delivery_address,
-                    }}
-                    driver={driverLocation ? { lat: driverLocation.latitude, lng: driverLocation.longitude } : null}
-                    onRouteSummary={({ distanceKm, durationText }) => {
-                      if (typeof distanceKm === 'number') setDistance(distanceKm.toFixed(2));
-                      if (durationText) setEta(durationText);
-                    }}
-                  />
+                  {Number.isFinite(selectedOrder.delivery_latitude) && Number.isFinite(selectedOrder.delivery_longitude) ? (
+                    <GoogleLiveMap
+                      className="w-full h-[500px] bg-gray-100"
+                      destination={{
+                        lat: selectedOrder.delivery_latitude,
+                        lng: selectedOrder.delivery_longitude,
+                        address: selectedOrder.delivery_address,
+                      }}
+                      driver={driverLocation && Number.isFinite(driverLocation.latitude) && Number.isFinite(driverLocation.longitude) ? { lat: driverLocation.latitude, lng: driverLocation.longitude } : null}
+                      onRouteSummary={({ distanceKm, durationText }) => {
+                        if (typeof distanceKm === 'number') setDistance(distanceKm.toFixed(2));
+                        if (durationText) setEta(durationText);
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-[300px] flex items-center justify-center bg-gray-50">
+                      <p className="text-sm text-gray-500">No valid destination coordinates for this delivery</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Order Details */}

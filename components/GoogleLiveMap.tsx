@@ -52,28 +52,24 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
   const directionsServiceRef = useRef<google.maps.DirectionsService>();
   const [error, setError] = useState<string | null>(null);
 
-  // Validate coordinates
-  const isValidCoord = (lat: any, lng: any): boolean => {
-    return typeof lat === 'number' && typeof lng === 'number' && 
-           !isNaN(lat) && !isNaN(lng) && 
-           isFinite(lat) && isFinite(lng);
+  const isValidCoord = (lat: unknown, lng: unknown): boolean => {
+    return typeof lat === 'number' && typeof lng === 'number' &&
+      Number.isFinite(lat) && Number.isFinite(lng);
   };
 
-  if (!isValidCoord(destination.lat, destination.lng)) {
-    console.error('Invalid destination coordinates:', destination);
-    setError('Invalid destination coordinates');
-  }
-
-  if (driver && !isValidCoord(driver.lat, driver.lng)) {
-    console.warn('Invalid driver coordinates, ignoring:', driver);
-    driver = null;
-  }
+  const destinationValid = destination && isValidCoord(destination.lat, destination.lng);
+  const driverValid = driver && isValidCoord(driver.lat, driver.lng);
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
     console.log('🗺️ Google Maps API Key loaded:', apiKey ? `${apiKey.substring(0, 20)}...` : 'NOT FOUND');
     if (!apiKey) {
       setError('Google Maps API key not configured');
+      return;
+    }
+
+    if (!destinationValid) {
+      setError('Destination coordinates missing');
       return;
     }
 
@@ -109,7 +105,7 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
         }
 
         // Driver marker
-        if (driver && isValidCoord(driver.lat, driver.lng)) {
+        if (driverValid) {
           if (!driverMarkerRef.current) {
             driverMarkerRef.current = new google.maps.Marker({
               position: { lat: driver.lat, lng: driver.lng },
@@ -134,7 +130,7 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
           directionsRendererRef.current.setMap(map);
         }
 
-        if (driver && isValidCoord(driver.lat, driver.lng)) {
+        if (driverValid) {
           directionsServiceRef.current.route(
             {
               origin: { lat: driver.lat, lng: driver.lng },
@@ -175,7 +171,15 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
     return () => {
       cancelled = true;
     };
-  }, [destination.lat, destination.lng, driver?.lat, driver?.lng, zoom]);
+  }, [destinationValid, driverValid, destination?.lat, destination?.lng, driver?.lat, driver?.lng, zoom]);
+
+  if (!error && !destinationValid) {
+    return (
+      <div className={className || 'w-full h-[300px] bg-gray-100 flex items-center justify-center rounded'}>
+        <p className="text-sm text-gray-500">Destination coordinates not set</p>
+      </div>
+    );
+  }
 
   if (error) {
     return (
