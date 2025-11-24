@@ -54,6 +54,7 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+    console.log('🗺️ Google Maps API Key loaded:', apiKey ? `${apiKey.substring(0, 20)}...` : 'NOT FOUND');
     if (!apiKey) {
       setError('Google Maps API key not configured');
       return;

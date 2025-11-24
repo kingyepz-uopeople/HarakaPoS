@@ -11,8 +11,8 @@ interface EmbeddedMapProps {
   showDirections?: boolean;
 }
 
-// Google Maps API Key
-const GOOGLE_MAPS_API_KEY = "AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao";
+// Google Maps API Key from environment variable
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "";
 
 export default function EmbeddedMap({
   latitude,

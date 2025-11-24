@@ -17,8 +17,8 @@ interface OpenStreetMapLocationPickerProps {
   placeholder?: string;
 }
 
-// Google Maps API Key
-const GOOGLE_MAPS_API_KEY = "AIzaSyAOVYRIgupAurZup9y1PRh8Ismb1A4lLao";
+// Google Maps API Key from environment variable
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "";
 
 // Mapbox API Key - Add your Mapbox token here
 const MAPBOX_ACCESS_TOKEN = "pk.eyJ1Ijoia2luZ3llcHoiLCJhIjoiY21obmhrbG9lMDBpdzJrcXlvYnFmcXFwbyJ9.UBXI87gE5_0d3TOfrQoBYw"; // Replace with your actual Mapbox token
