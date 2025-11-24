@@ -30,52 +30,19 @@ const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: numb
     
     console.log('🔍 Processing Google Maps URL:', urlToProcess);
     
-    // For shortened goo.gl links, we need to expand them
+    // For shortened goo.gl links, inform user to use full URL
     if (urlToProcess.includes('maps.app.goo.gl') || urlToProcess.includes('goo.gl/maps')) {
-      console.log('⏳ Detected shortened URL, attempting to expand...');
+      console.log('⚠️ Shortened Google Maps link detected');
+      console.log('💡 For best results, open the link in your browser and copy the full URL from the address bar');
       
-      try {
-        // Try direct fetch with CORS proxy
-        const corsProxy = 'https://api.allorigins.win/raw?url=';
-        const response = await fetch(corsProxy + encodeURIComponent(urlToProcess), {
-          redirect: 'follow',
-          headers: {
-            'Accept': 'text/html,application/xhtml+xml'
-          }
-        });
-        
-        const html = await response.text();
-        console.log('📄 Fetched HTML from shortened URL');
-        
-        // Try to extract coordinates from the HTML response
-        // Google Maps embeds coordinates in meta tags and script tags
-        const metaMatch = html.match(/content="https:\/\/www\.google\.com\/maps[^"]*@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
-        if (metaMatch) {
-          console.log('✅ Extracted coordinates from meta tag');
-          return { lat: parseFloat(metaMatch[1]), lng: parseFloat(metaMatch[2]) };
-        }
-        
-        // Try to extract from any Google Maps URL in the HTML
-        const urlMatch = html.match(/https:\/\/www\.google\.com\/maps[^"'<>]*@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
-        if (urlMatch) {
-          console.log('✅ Extracted coordinates from embedded URL');
-          return { lat: parseFloat(urlMatch[1]), lng: parseFloat(urlMatch[2]) };
-        }
-        
-        // Try to extract from place data
-        const placeMatch = html.match(/"(-?\d+\.?\d+),(-?\d+\.?\d+)"/);
-        if (placeMatch) {
-          console.log('✅ Extracted coordinates from place data');
-          return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
-        }
-        
-        console.warn('⚠️ Could not extract coordinates from expanded URL');
-      } catch (expandError) {
-        console.error('❌ Failed to expand shortened URL:', expandError);
-      }
+      // Still try to extract if there's a fallback pattern
+      // Some shortened URLs might have coordinates in a different format
+      // But we won't make external fetch calls that can fail
+      alert('📍 Shortened Google Maps Link Detected\n\nFor accurate location:\n1. Open this link in your browser\n2. Copy the full URL from the address bar (it will be much longer)\n3. Paste the full URL here\n\nThe full URL contains the exact coordinates.');
+      return null;
     }
     
-    // Try to extract coordinates from the URL (either original or if shortened URL expansion failed)
+    // Try to extract coordinates from the URL
     // Format 1: @-1.286389,36.817223 (most common)
     const atMatch = urlToProcess.match(/@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
     if (atMatch) {
@@ -102,6 +69,13 @@ const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: numb
     if (placeMatch) {
       console.log('✅ Extracted coordinates using place pattern');
       return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
+    }
+
+    // Format 5: Just coordinates separated by comma (direct input)
+    const coordMatch = urlToProcess.match(/^(-?\d+\.?\d+)\s*,\s*(-?\d+\.?\d+)$/);
+    if (coordMatch) {
+      console.log('✅ Extracted coordinates from direct input');
+      return { lat: parseFloat(coordMatch[1]), lng: parseFloat(coordMatch[2]) };
     }
 
     // If all extraction attempts fail
@@ -586,7 +560,7 @@ export default function OpenStreetMapLocationPicker({
       <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
         <LinkIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
         <span>
-          💡 Tip: You can paste a Google Maps URL (including shortened goo.gl links) or search for an address. The system will automatically extract the location coordinates.
+          💡 <strong>Tip:</strong> Paste a <strong>full</strong> Google Maps URL or search for an address. For shortened links (goo.gl), open them in your browser first and copy the full URL from the address bar.
         </span>
       </div>
 
