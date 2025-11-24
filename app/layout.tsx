@@ -38,10 +38,6 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="HarakaPOS" />
-        <script
-          async
-          src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places,directions`}
-        />
       </head>
       <body className={inter.className}>
         <ThemeProvider>{children}</ThemeProvider>

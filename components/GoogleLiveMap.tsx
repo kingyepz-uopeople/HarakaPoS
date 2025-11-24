@@ -52,6 +52,23 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
   const directionsServiceRef = useRef<google.maps.DirectionsService>();
   const [error, setError] = useState<string | null>(null);
 
+  // Validate coordinates
+  const isValidCoord = (lat: any, lng: any): boolean => {
+    return typeof lat === 'number' && typeof lng === 'number' && 
+           !isNaN(lat) && !isNaN(lng) && 
+           isFinite(lat) && isFinite(lng);
+  };
+
+  if (!isValidCoord(destination.lat, destination.lng)) {
+    console.error('Invalid destination coordinates:', destination);
+    setError('Invalid destination coordinates');
+  }
+
+  if (driver && !isValidCoord(driver.lat, driver.lng)) {
+    console.warn('Invalid driver coordinates, ignoring:', driver);
+    driver = null;
+  }
+
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
     console.log('🗺️ Google Maps API Key loaded:', apiKey ? `${apiKey.substring(0, 20)}...` : 'NOT FOUND');
@@ -69,7 +86,7 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
 
         if (!mapRef.current) {
           mapRef.current = new google.maps.Map(containerRef.current, {
-            center: destination,
+            center: { lat: destination.lat, lng: destination.lng },
             zoom,
             mapTypeControl: false,
             streetViewControl: false,
@@ -82,26 +99,26 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
         // Destination marker
         if (!destMarkerRef.current) {
           destMarkerRef.current = new google.maps.Marker({
-            position: destination,
+            position: { lat: destination.lat, lng: destination.lng },
             map,
             label: '🎯',
             title: destination.address || 'Delivery Destination',
           });
         } else {
-          destMarkerRef.current.setPosition(destination);
+          destMarkerRef.current.setPosition({ lat: destination.lat, lng: destination.lng });
         }
 
         // Driver marker
-        if (driver) {
+        if (driver && isValidCoord(driver.lat, driver.lng)) {
           if (!driverMarkerRef.current) {
             driverMarkerRef.current = new google.maps.Marker({
-              position: driver,
+              position: { lat: driver.lat, lng: driver.lng },
               map,
               label: '🚚',
               title: 'Driver Location',
             });
           } else {
-            driverMarkerRef.current.setPosition(driver);
+            driverMarkerRef.current.setPosition({ lat: driver.lat, lng: driver.lng });
           }
         }
 
@@ -117,11 +134,11 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
           directionsRendererRef.current.setMap(map);
         }
 
-        if (driver) {
+        if (driver && isValidCoord(driver.lat, driver.lng)) {
           directionsServiceRef.current.route(
             {
-              origin: driver,
-              destination,
+              origin: { lat: driver.lat, lng: driver.lng },
+              destination: { lat: destination.lat, lng: destination.lng },
               travelMode: google.maps.TravelMode.DRIVING,
             },
             (result, status) => {
@@ -139,12 +156,14 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
                   bounds.extend(leg.end_location);
                   map.fitBounds(bounds, 50);
                 }
+              } else {
+                console.warn('Directions request failed:', status);
               }
             }
           );
         } else {
           // No driver yet; center on destination
-          map.setCenter(destination);
+          map.setCenter({ lat: destination.lat, lng: destination.lng });
           map.setZoom(zoom);
         }
       })
