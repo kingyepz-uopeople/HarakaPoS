@@ -1,20 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/utils/formatCurrency';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import GoogleLiveMap from '@/components/GoogleLiveMap';
 import { Package, MapPin, Clock, User, Calendar, Navigation2, Radio, Truck, Phone, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-// Fix Leaflet default marker icon
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
 
 interface Order {
   id: string;
@@ -59,12 +51,6 @@ export default function AdminTrackDriverPage() {
   const [loading, setLoading] = useState(true);
   const [eta, setEta] = useState<string>('');
   const [distance, setDistance] = useState<string>('');
-  
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
-  const driverMarker = useRef<L.Marker | null>(null);
-  const destinationMarker = useRef<L.Marker | null>(null);
-  const polyline = useRef<L.Polyline | null>(null);
   
   const supabase = createClient();
 
@@ -189,106 +175,11 @@ export default function AdminTrackDriverPage() {
     };
   }, [selectedOrder?.id]);
 
-  // Initialize map
+
+
+  // Fallback distance/ETA until Google route summary arrives
   useEffect(() => {
-    if (!mapRef.current || mapInstance.current || !selectedOrder) return;
-
-    const map = L.map(mapRef.current).setView(
-      [selectedOrder.delivery_latitude, selectedOrder.delivery_longitude],
-      13
-    );
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map);
-
-    mapInstance.current = map;
-
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
-    };
-  }, [selectedOrder]);
-
-  // Update destination marker when order changes
-  useEffect(() => {
-    if (!mapInstance.current || !selectedOrder) return;
-
-    const map = mapInstance.current;
-
-    // Remove old destination marker
-    if (destinationMarker.current) {
-      map.removeLayer(destinationMarker.current);
-    }
-
-    // Add new destination marker
-    const destIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    });
-
-    destinationMarker.current = L.marker(
-      [selectedOrder.delivery_latitude, selectedOrder.delivery_longitude],
-      { icon: destIcon }
-    )
-      .addTo(map)
-      .bindPopup(`<strong>🎯 Delivery Destination</strong><br>${selectedOrder.delivery_address}`);
-
-    map.setView([selectedOrder.delivery_latitude, selectedOrder.delivery_longitude], 13);
-  }, [selectedOrder]);
-
-  // Update driver marker and route
-  useEffect(() => {
-    if (!mapInstance.current || !selectedOrder || !driverLocation) return;
-
-    const map = mapInstance.current;
-
-    // Create/update driver marker
-    if (!driverMarker.current) {
-      const driverIcon = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
-      });
-
-      driverMarker.current = L.marker([driverLocation.latitude, driverLocation.longitude], {
-        icon: driverIcon,
-      })
-        .addTo(map)
-        .bindPopup('<strong>🚚 Driver Location</strong><br>Real-time GPS');
-    } else {
-      driverMarker.current.setLatLng([driverLocation.latitude, driverLocation.longitude]);
-    }
-
-    // Update polyline
-    if (polyline.current) {
-      map.removeLayer(polyline.current);
-    }
-
-    polyline.current = L.polyline(
-      [
-        [driverLocation.latitude, driverLocation.longitude],
-        [selectedOrder.delivery_latitude, selectedOrder.delivery_longitude],
-      ],
-      {
-        color: '#3b82f6',
-        weight: 3,
-        opacity: 0.7,
-        dashArray: '10, 10',
-      }
-    ).addTo(map);
-
-    // Calculate distance and ETA
+    if (!selectedOrder || !driverLocation) return;
     const dist = calculateDistance(
       driverLocation.latitude,
       driverLocation.longitude,
@@ -297,13 +188,6 @@ export default function AdminTrackDriverPage() {
     );
     setDistance(dist.toFixed(2));
     setEta(calculateETA(dist, driverLocation.speed));
-
-    // Fit bounds to show both markers
-    const bounds = L.latLngBounds([
-      [driverLocation.latitude, driverLocation.longitude],
-      [selectedOrder.delivery_latitude, selectedOrder.delivery_longitude],
-    ]);
-    map.fitBounds(bounds, { padding: [50, 50] });
   }, [driverLocation, selectedOrder]);
 
   const getStatusColor = (status: string) => {
@@ -440,9 +324,21 @@ export default function AdminTrackDriverPage() {
                   </div>
                 )}
 
-                {/* Live Map */}
+                {/* Live Map (Google Maps) */}
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-                  <div ref={mapRef} className="w-full h-[500px] bg-gray-100" />
+                  <GoogleLiveMap
+                    className="w-full h-[500px] bg-gray-100"
+                    destination={{
+                      lat: selectedOrder.delivery_latitude,
+                      lng: selectedOrder.delivery_longitude,
+                      address: selectedOrder.delivery_address,
+                    }}
+                    driver={driverLocation ? { lat: driverLocation.latitude, lng: driverLocation.longitude } : null}
+                    onRouteSummary={({ distanceKm, durationText }) => {
+                      if (typeof distanceKm === 'number') setDistance(distanceKm.toFixed(2));
+                      if (durationText) setEta(durationText);
+                    }}
+                  />
                 </div>
 
                 {/* Order Details */}
