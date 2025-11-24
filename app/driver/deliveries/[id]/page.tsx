@@ -429,15 +429,6 @@ export default function DeliveryDetailsPage() {
 
       {/* Actions */}
       <div className="space-y-3">
-        {/* Navigate Button - Always visible */}
-        <button
-          onClick={openNavigation}
-          className="w-full bg-white border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50 py-4 px-4 rounded-xl text-base font-semibold transition-colors flex items-center justify-center space-x-2"
-        >
-          <Navigation className="w-5 h-5" />
-          <span>Navigate to Location</span>
-        </button>
-
         {/* Start Delivery Button */}
         {(delivery.delivery_status === "Pending" || delivery.delivery_status === "Scheduled") && (
           <button

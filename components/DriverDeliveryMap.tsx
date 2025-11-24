@@ -29,7 +29,7 @@ interface DriverDeliveryMapProps {
 type MapType = 'osm' | 'mapbox' | 'google';
 
 export default function DriverDeliveryMap({ origin, destination, className = '' }: DriverDeliveryMapProps) {
-  const [mapType, setMapType] = useState<MapType>('osm');
+  const [mapType, setMapType] = useState<MapType>('google');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [distance, setDistance] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
@@ -244,6 +244,13 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
 
     const initGoogleMap = async () => {
       try {
+        // Wait for Google Maps to load
+        if (typeof google === 'undefined' || !google.maps) {
+          console.log('Waiting for Google Maps to load...');
+          setTimeout(initGoogleMap, 500);
+          return;
+        }
+
         const start = (useCurrentLocation && currentLocation) ? currentLocation : origin;
         
         const map = new google.maps.Map(googleMapRef.current!, {
@@ -275,6 +282,8 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
             setDistance(route.distance?.text || '');
             setDuration(route.duration?.text || '');
             setRouteLoaded(true);
+          } else {
+            console.error('Directions request failed:', status);
           }
         });
 
