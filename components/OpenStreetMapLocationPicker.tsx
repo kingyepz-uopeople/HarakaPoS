@@ -153,50 +153,84 @@ export default function OpenStreetMapLocationPicker({
     if (!showMap || mapType !== 'google' || !googleMapRef.current || googleMap) return;
 
     const initGoogleMap = async () => {
-      // Load Google Maps if not already loaded
-      if (!window.google?.maps) {
-        // Check if script is already being loaded
-        const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-        if (!existingScript) {
-          const script = document.createElement('script');
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
-          script.async = true;
-          script.defer = true;
-          await new Promise((resolve, reject) => {
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
-        } else {
-          // Wait for existing script to load
-          await new Promise((resolve) => {
-            const checkGoogle = setInterval(() => {
-              if (window.google?.maps) {
-                clearInterval(checkGoogle);
+      try {
+        console.log('🗺️ Initializing Google Maps with API key:', GOOGLE_MAPS_API_KEY ? `${GOOGLE_MAPS_API_KEY.substring(0, 20)}...` : 'NOT FOUND');
+        
+        // Load Google Maps if not already loaded
+        if (!window.google?.maps) {
+          // Check if script is already being loaded
+          const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+          if (!existingScript) {
+            console.log('📥 Loading Google Maps script...');
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+            script.async = true;
+            script.defer = true;
+            await new Promise((resolve, reject) => {
+              script.onload = () => {
+                console.log('✅ Google Maps script loaded successfully');
                 resolve(true);
-              }
-            }, 100);
-          });
+              };
+              script.onerror = (error) => {
+                console.error('❌ Failed to load Google Maps script:', error);
+                reject(error);
+              };
+              document.head.appendChild(script);
+            });
+          } else {
+            console.log('⏳ Waiting for existing Google Maps script to load...');
+            // Wait for existing script to load
+            await new Promise((resolve) => {
+              const checkGoogle = setInterval(() => {
+                if (window.google?.maps) {
+                  clearInterval(checkGoogle);
+                  console.log('✅ Google Maps API ready');
+                  resolve(true);
+                }
+              }, 100);
+            });
+          }
         }
-      }
 
-      const map = new window.google.maps.Map(googleMapRef.current!, {
-        center: { lat: mapCenter[0], lng: mapCenter[1] },
-        zoom: 15,
-      });
+        console.log('🗺️ Creating Google Map instance...');
+        const map = new window.google.maps.Map(googleMapRef.current!, {
+          center: { lat: mapCenter[0], lng: mapCenter[1] },
+          zoom: 15,
+        });
 
-      const marker = new window.google.maps.Marker({
-        position: { lat: mapCenter[0], lng: mapCenter[1] },
-        map: map,
-        draggable: true,
-      });
+        const marker = new window.google.maps.Marker({
+          position: { lat: mapCenter[0], lng: mapCenter[1] },
+          map: map,
+          draggable: true,
+        });
+        
+        console.log('✅ Google Map initialized successfully');
 
-      // Handle marker drag
-      marker.addListener('dragend', async () => {
-        const position = marker.getPosition();
-        if (position) {
-          const lat = position.lat();
-          const lng = position.lng();
+        // Handle marker drag
+        marker.addListener('dragend', async () => {
+          const position = marker.getPosition();
+          if (position) {
+            const lat = position.lat();
+            const lng = position.lng();
+            const address = await reverseGeocode(lat, lng);
+
+            onChange({
+              address,
+              latitude: lat,
+              longitude: lng,
+            });
+
+            setSearchQuery(address);
+            setMapCenter([lat, lng]);
+          }
+        });
+
+        // Handle map click
+        map.addListener('click', async (e: any) => {
+          const lat = e.latLng.lat();
+          const lng = e.latLng.lng();
+          marker.setPosition({ lat, lng });
+
           const address = await reverseGeocode(lat, lng);
 
           onChange({
@@ -207,29 +241,24 @@ export default function OpenStreetMapLocationPicker({
 
           setSearchQuery(address);
           setMapCenter([lat, lng]);
-        }
-      });
-
-      // Handle map click
-      map.addListener('click', async (e: any) => {
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
-        marker.setPosition({ lat, lng });
-
-        const address = await reverseGeocode(lat, lng);
-
-        onChange({
-          address,
-          latitude: lat,
-          longitude: lng,
         });
-
-        setSearchQuery(address);
-        setMapCenter([lat, lng]);
-      });
 
       setGoogleMap(map);
       setGoogleMarker(marker);
+      } catch (error) {
+        console.error('❌ Error initializing Google Maps:', error);
+        // Show error in the map area
+        if (googleMapRef.current) {
+          googleMapRef.current.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #fef3c7; padding: 20px; text-align: center;">
+              <div>
+                <p style="color: #92400e; font-weight: 600; margin-bottom: 8px;">⚠️ Google Maps failed to load</p>
+                <p style="color: #78350f; font-size: 14px;">Check console for details. Try using OpenStreetMap or Mapbox instead.</p>
+              </div>
+            </div>
+          `;
+        }
+      }
     };
 
     initGoogleMap();
