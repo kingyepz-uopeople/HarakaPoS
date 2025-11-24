@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
 import PDAPaymentFlow from "@/components/PDAPaymentFlow";
-import EmbeddedMapOSM from "@/components/EmbeddedMapOSM";
+import DriverDeliveryMap from "@/components/DriverDeliveryMap";
 import { useDriverLocationTracking } from "@/lib/hooks/useDriverLocationTracking";
 import {
   MapPin,
@@ -272,7 +272,7 @@ export default function DeliveryDetailsPage() {
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 pb-32">
       {/* Header */}
       <div className="flex items-center space-x-3">
         <button
@@ -331,8 +331,8 @@ export default function DeliveryDetailsPage() {
         </div>
       </div>
 
-      {/* Embedded Map - FREE OpenStreetMap! */}
-      <EmbeddedMapOSM
+      {/* Embedded Map - All 3 Map Providers! */}
+      <DriverDeliveryMap
         origin={{
           lat: -1.286389, // Default Nairobi (can be replaced with driver's current location)
           lng: 36.817223,
@@ -428,7 +428,7 @@ export default function DeliveryDetailsPage() {
       </div>
 
       {/* Actions */}
-      <div className="space-y-3 sticky bottom-20 pb-4">
+      <div className="space-y-3">
         {/* Navigate Button - Always visible */}
         <button
           onClick={openNavigation}
