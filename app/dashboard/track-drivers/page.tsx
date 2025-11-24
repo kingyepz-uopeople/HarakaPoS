@@ -25,13 +25,6 @@ interface Order {
     name: string;
     phone: string;
   };
-  driver?: {
-    id: string;
-    email: string;
-    user_metadata: {
-      full_name?: string;
-    };
-  };
 }
 
 interface DriverLocation {
@@ -94,24 +87,22 @@ export default function AdminTrackDriverPage() {
             customers (
               name,
               phone
-            ),
-            driver:users!orders_assigned_driver_fkey (
-              id,
-              email,
-              user_metadata
             )
           `)
           .in('delivery_status', ['Out for Delivery', 'Arrived'])
           .order('delivery_date', { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase error:', error);
+          throw error;
+        }
 
         const formatted = (data || []).map((order: any) => ({
           ...order,
           customers: Array.isArray(order.customers) ? order.customers[0] : order.customers,
-          driver: Array.isArray(order.driver) ? order.driver[0] : order.driver,
         }));
 
+        console.log('Active deliveries loaded:', formatted.length);
         setActiveDeliveries(formatted);
         
         // Auto-select first delivery if none selected
@@ -281,12 +272,6 @@ export default function AdminTrackDriverPage() {
                           <MapPin className="w-3 h-3" />
                           <span className="truncate">{order.delivery_address}</span>
                         </div>
-                        {order.driver && (
-                          <div className="flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            <span>{order.driver.user_metadata?.full_name || order.driver.email}</span>
-                          </div>
-                        )}
                       </div>
                     </button>
                   ))}
@@ -397,18 +382,6 @@ export default function AdminTrackDriverPage() {
                           </p>
                         </div>
                       </div>
-
-                      {selectedOrder.driver && (
-                        <div className="flex items-center space-x-3">
-                          <Truck className="w-5 h-5 text-gray-400" />
-                          <div>
-                            <p className="text-sm text-gray-500">Driver</p>
-                            <p className="font-medium text-gray-900">
-                              {selectedOrder.driver.user_metadata?.full_name || selectedOrder.driver.email}
-                            </p>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
