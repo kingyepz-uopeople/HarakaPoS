@@ -720,8 +720,8 @@ export default function OrdersPage() {
                           ...formData, 
                           customer_id: customerId,
                           delivery_address: selectedCustomer.location,
-                          delivery_latitude: hasValidCoords ? selectedCustomer.latitude : null,
-                          delivery_longitude: hasValidCoords ? selectedCustomer.longitude : null,
+                          delivery_latitude: hasValidCoords ? (selectedCustomer.latitude ?? null) : null,
+                          delivery_longitude: hasValidCoords ? (selectedCustomer.longitude ?? null) : null,
                         });
                       } else {
                         setFormData({ ...formData, customer_id: customerId });
