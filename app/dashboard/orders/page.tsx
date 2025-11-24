@@ -705,14 +705,23 @@ export default function OrdersPage() {
                       const customerId = e.target.value;
                       const selectedCustomer = customers.find(c => c.id === customerId);
                       
+                      console.log('Selected customer:', selectedCustomer);
+                      
                       // Auto-populate delivery location from customer if available
                       if (selectedCustomer?.location) {
+                        // Validate coordinates - must be in Kenya range approximately
+                        const hasValidCoords = selectedCustomer.latitude && selectedCustomer.longitude &&
+                          selectedCustomer.latitude >= -5 && selectedCustomer.latitude <= 5 &&
+                          selectedCustomer.longitude >= 33 && selectedCustomer.longitude <= 42;
+                        
+                        console.log('Has valid coords:', hasValidCoords, selectedCustomer.latitude, selectedCustomer.longitude);
+                        
                         setFormData({ 
                           ...formData, 
                           customer_id: customerId,
                           delivery_address: selectedCustomer.location,
-                          delivery_latitude: selectedCustomer.latitude || null,
-                          delivery_longitude: selectedCustomer.longitude || null,
+                          delivery_latitude: hasValidCoords ? selectedCustomer.latitude : null,
+                          delivery_longitude: hasValidCoords ? selectedCustomer.longitude : null,
                         });
                       } else {
                         setFormData({ ...formData, customer_id: customerId });
@@ -817,10 +826,25 @@ export default function OrdersPage() {
                     Delivery Location
                   </label>
                   {formData.delivery_address && formData.customer_id && (
-                    <div className="mb-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-green-700 dark:text-green-300">
-                        ✅ Location auto-filled from customer profile. You can change it below if needed.
+                    <div className={`mb-2 p-2 border rounded-md flex items-start gap-2 ${
+                      formData.delivery_latitude && formData.delivery_longitude
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                        : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                    }`}>
+                      <MapPin className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                        formData.delivery_latitude && formData.delivery_longitude
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-yellow-600 dark:text-yellow-400'
+                      }`} />
+                      <p className={`text-sm ${
+                        formData.delivery_latitude && formData.delivery_longitude
+                          ? 'text-green-700 dark:text-green-300'
+                          : 'text-yellow-700 dark:text-yellow-300'
+                      }`}>
+                        {formData.delivery_latitude && formData.delivery_longitude
+                          ? '✅ Location auto-filled from customer profile with coordinates. You can change it below if needed.'
+                          : '⚠️ Address auto-filled but coordinates are missing. Please paste a Google Maps link or use "Show Map" to set the exact location.'
+                        }
                       </p>
                     </div>
                   )}
