@@ -26,62 +26,89 @@ const MAPBOX_ACCESS_TOKEN = "pk.eyJ1Ijoia2luZ3llcHoiLCJhIjoiY21obmhrbG9lMDBpdzJr
 // Extract coordinates from Google Maps share link
 const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: number; lng: number } | null> => {
   try {
-    let urlToProcess = url;
+    let urlToProcess = url.trim();
     
-    // For shortened goo.gl links, try to expand using a redirect service
-    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
+    console.log('🔍 Processing Google Maps URL:', urlToProcess);
+    
+    // For shortened goo.gl links, we need to expand them
+    if (urlToProcess.includes('maps.app.goo.gl') || urlToProcess.includes('goo.gl/maps')) {
+      console.log('⏳ Detected shortened URL, attempting to expand...');
+      
       try {
-        // Use a CORS-friendly redirect resolver
-        const response = await fetch(`https://unshorten.me/json/${encodeURIComponent(url)}`);
-        const data = await response.json();
-        if (data.resolved_url) {
-          urlToProcess = data.resolved_url;
-        }
-      } catch (expandError) {
-        // If expansion fails, try alternative method
-        try {
-          const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-          const data = await response.json();
-          // Extract URL from meta redirect or Location header
-          const urlMatch = data.contents?.match(/URL=([^"]+)/) || data.contents?.match(/href="([^"]+)/);
-          if (urlMatch && urlMatch[1]) {
-            urlToProcess = urlMatch[1];
+        // Try direct fetch with CORS proxy
+        const corsProxy = 'https://api.allorigins.win/raw?url=';
+        const response = await fetch(corsProxy + encodeURIComponent(urlToProcess), {
+          redirect: 'follow',
+          headers: {
+            'Accept': 'text/html,application/xhtml+xml'
           }
-        } catch (altError) {
-          console.log('Could not expand shortened URL, trying pattern matching...');
+        });
+        
+        const html = await response.text();
+        console.log('📄 Fetched HTML from shortened URL');
+        
+        // Try to extract coordinates from the HTML response
+        // Google Maps embeds coordinates in meta tags and script tags
+        const metaMatch = html.match(/content="https:\/\/www\.google\.com\/maps[^"]*@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
+        if (metaMatch) {
+          console.log('✅ Extracted coordinates from meta tag');
+          return { lat: parseFloat(metaMatch[1]), lng: parseFloat(metaMatch[2]) };
         }
+        
+        // Try to extract from any Google Maps URL in the HTML
+        const urlMatch = html.match(/https:\/\/www\.google\.com\/maps[^"'<>]*@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
+        if (urlMatch) {
+          console.log('✅ Extracted coordinates from embedded URL');
+          return { lat: parseFloat(urlMatch[1]), lng: parseFloat(urlMatch[2]) };
+        }
+        
+        // Try to extract from place data
+        const placeMatch = html.match(/"(-?\d+\.?\d+),(-?\d+\.?\d+)"/);
+        if (placeMatch) {
+          console.log('✅ Extracted coordinates from place data');
+          return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
+        }
+        
+        console.warn('⚠️ Could not extract coordinates from expanded URL');
+      } catch (expandError) {
+        console.error('❌ Failed to expand shortened URL:', expandError);
       }
     }
     
-    // Try to extract coordinates from the URL (either original or expanded)
-    // Format 1: @-1.286389,36.817223
-    const atMatch = urlToProcess.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    // Try to extract coordinates from the URL (either original or if shortened URL expansion failed)
+    // Format 1: @-1.286389,36.817223 (most common)
+    const atMatch = urlToProcess.match(/@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
     if (atMatch) {
+      console.log('✅ Extracted coordinates using @ pattern');
       return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
     }
 
     // Format 2: q=-1.286389,36.817223
-    const qMatch = urlToProcess.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const qMatch = urlToProcess.match(/[?&]q=(-?\d+\.?\d+),(-?\d+\.?\d+)/);
     if (qMatch) {
+      console.log('✅ Extracted coordinates using q= pattern');
       return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
     }
 
     // Format 3: ll=-1.286389,36.817223
-    const llMatch = urlToProcess.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const llMatch = urlToProcess.match(/[?&]ll=(-?\d+\.?\d+),(-?\d+\.?\d+)/);
     if (llMatch) {
+      console.log('✅ Extracted coordinates using ll= pattern');
       return { lat: parseFloat(llMatch[1]), lng: parseFloat(llMatch[2]) };
     }
 
     // Format 4: place/Location+Name/@-1.286389,36.817223
-    const placeMatch = urlToProcess.match(/place\/[^/]+\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const placeMatch = urlToProcess.match(/place\/[^/]+\/@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
     if (placeMatch) {
+      console.log('✅ Extracted coordinates using place pattern');
       return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
     }
 
     // If all extraction attempts fail
+    console.warn('⚠️ Could not extract coordinates from URL:', urlToProcess);
     return null;
   } catch (error) {
-    console.error('Error extracting coordinates:', error);
+    console.error('❌ Error extracting coordinates:', error);
     return null;
   }
 };
@@ -559,7 +586,7 @@ export default function OpenStreetMapLocationPicker({
       <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
         <LinkIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
         <span>
-          💡 Tip: You can paste a full Google Maps URL or search for an address. For shortened links (goo.gl), open them first and copy the full URL from your browser.
+          💡 Tip: You can paste a Google Maps URL (including shortened goo.gl links) or search for an address. The system will automatically extract the location coordinates.
         </span>
       </div>
 
