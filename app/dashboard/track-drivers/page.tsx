@@ -93,8 +93,16 @@ export default function AdminTrackDriverPage() {
           .order('delivery_date', { ascending: true });
 
         if (error) {
-          console.error('Supabase error:', error);
-          throw error;
+          console.error('Supabase error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          // Don't throw, just log and continue with empty array
+          setActiveDeliveries([]);
+          setLoading(false);
+          return;
         }
 
         const formatted = (data || []).map((order: any) => ({
@@ -109,8 +117,12 @@ export default function AdminTrackDriverPage() {
         if (!selectedOrder && formatted.length > 0) {
           setSelectedOrder(formatted[0]);
         }
-      } catch (error) {
-        console.error('Error loading active deliveries:', error);
+      } catch (error: any) {
+        console.error('Error loading active deliveries:', {
+          message: error?.message || 'Unknown error',
+          error
+        });
+        setActiveDeliveries([]);
       } finally {
         setLoading(false);
       }
