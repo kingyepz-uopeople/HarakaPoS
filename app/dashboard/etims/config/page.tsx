@@ -16,9 +16,6 @@ export default function EtimsConfigPage() {
     business_name: 'Haraka Wedges Supplies',
     kra_pin: '',
     business_type: 'sole_proprietorship',
-    cu_serial_number: '',
-    cu_model: '',
-    use_virtual_cu: false,
     environment: 'sandbox' as 'sandbox' | 'production',
     bhf_id: '',
     tin: '',
@@ -48,9 +45,6 @@ export default function EtimsConfigPage() {
         business_name: data.business_name,
         kra_pin: data.kra_pin,
         business_type: data.business_type,
-        cu_serial_number: data.cu_serial_number || '',
-        use_virtual_cu: !data.cu_serial_number || data.cu_serial_number.startsWith('VIRTUAL'),
-        cu_model: data.cu_model || '',
         environment: data.environment,
         bhf_id: data.bhf_id || '',
         tin: data.tin || '',
@@ -134,13 +128,14 @@ export default function EtimsConfigPage() {
         <div className="flex">
           <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5" />
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800">Before You Start</h3>
+            <h3 className="text-sm font-medium text-blue-800">OSCU (Online Sales Control Unit)</h3>
             <div className="mt-2 text-sm text-blue-700">
-              <ol className="list-decimal list-inside space-y-1">
+              <p>This system uses <strong>OSCU</strong> - a cloud-based REST API integration with KRA eTIMS. No physical device required.</p>
+              <ol className="list-decimal list-inside space-y-1 mt-2">
                 <li>Register your business with KRA if not already done</li>
-                <li>Get a Control Unit (CU) device from KRA approved suppliers</li>
-                <li>Obtain your CU serial number and device initialization code</li>
+                <li>Obtain your KRA PIN and TIN</li>
                 <li>Test in <strong>Sandbox</strong> environment first before going live</li>
+                <li>Device ID will be auto-generated after initialization</li>
               </ol>
             </div>
           </div>
@@ -150,23 +145,24 @@ export default function EtimsConfigPage() {
       {/* Status Card */}
       {config && (
         <div className={`p-4 rounded-lg mb-6 ${
-          config.cu_status === 'active' ? 'bg-green-50 border-2 border-green-500' :
-          config.cu_status === 'pending' ? 'bg-yellow-50 border-2 border-yellow-500' :
+          config.oscu_status === 'active' ? 'bg-green-50 border-2 border-green-500' :
+          config.oscu_status === 'pending' ? 'bg-yellow-50 border-2 border-yellow-500' :
           'bg-red-50 border-2 border-red-500'
         }`}>
           <div className="flex items-center gap-3">
-            {config.cu_status === 'active' ? (
+            {config.oscu_status === 'active' ? (
               <CheckCircle className="w-6 h-6 text-green-600" />
             ) : (
               <AlertCircle className="w-6 h-6 text-yellow-600" />
             )}
             <div>
               <p className="font-semibold">
-                Status: <span className="capitalize">{config.cu_status}</span>
+                Status: <span className="capitalize">{config.oscu_status || 'Not Initialized'}</span>
               </p>
               <p className="text-sm text-gray-600">
                 Environment: <strong>{config.environment.toUpperCase()}</strong>
-                {config.cu_serial_number && ` | CU Serial: ${config.cu_serial_number}`}
+                {config.oscu_device_id && ` | OSCU Device: ${config.oscu_device_id}`}
+                {config.oscu_serial_number && ` | Serial: ${config.oscu_serial_number}`}
               </p>
             </div>
           </div>
@@ -258,81 +254,24 @@ export default function EtimsConfigPage() {
             </div>
           </div>
 
-          {/* Control Unit Information */}
+          {/* OSCU Information */}
           <div className="border-t pt-6">
-            <h2 className="text-xl font-semibold mb-4">Control Unit (CU) Information</h2>
+            <h2 className="text-xl font-semibold mb-4">OSCU Configuration</h2>
             
-            {/* Virtual CU Option */}
-            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  id="use_virtual_cu"
-                  checked={formData.use_virtual_cu}
-                  onChange={(e) => {
-                    const useVirtual = e.target.checked;
-                    setFormData({ 
-                      ...formData, 
-                      use_virtual_cu: useVirtual,
-                      cu_serial_number: useVirtual ? 'VIRTUAL-CU-' + Date.now() : ''
-                    });
-                  }}
-                  className="mt-1"
-                />
-                <label htmlFor="use_virtual_cu" className="flex-1">
-                  <div className="font-semibold text-blue-900">Use Virtual Control Unit (Recommended for Testing)</div>
-                  <div className="text-sm text-blue-700 mt-1">
-                    ✅ <strong>Benefits:</strong>
-                    <ul className="list-disc list-inside ml-4 mt-1">
-                      <li>No physical KRA device required</li>
-                      <li>Perfect for sandbox/testing environment</li>
-                      <li>Instant setup - no waiting for KRA hardware</li>
-                      <li>Full eTIMS functionality without hardware costs</li>
-                      <li>Easy migration to physical CU later</li>
-                    </ul>
-                  </div>
-                  {formData.use_virtual_cu && (
-                    <div className="mt-2 text-xs bg-white border border-blue-300 rounded p-2">
-                      <strong>Auto-generated Virtual CU:</strong> {formData.cu_serial_number}
-                    </div>
-                  )}
-                </label>
+            <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="text-sm text-green-800">
+                <strong>✅ Cloud-based OSCU (Online Sales Control Unit)</strong>
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>No physical KRA device required</li>
+                  <li>Pure REST API integration with KRA</li>
+                  <li>Works on any cloud platform (Vercel, AWS, etc.)</li>
+                  <li>Device ID auto-generated on initialization</li>
+                  <li>QR codes provided directly by KRA</li>
+                </ul>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {!formData.use_virtual_cu && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      CU Serial Number *
-                      <span className="text-gray-500 text-xs ml-2">(From physical KRA device)</span>
-                    </label>
-                    <input
-                      type="text"
-                      required={!formData.use_virtual_cu}
-                      value={formData.cu_serial_number}
-                      onChange={(e) => setFormData({ ...formData, cu_serial_number: e.target.value })}
-                      placeholder="CU-XXXX-XXXX-XXXX"
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      CU Model
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cu_model}
-                      onChange={(e) => setFormData({ ...formData, cu_model: e.target.value })}
-                      placeholder="e.g., KRA-CU-V2"
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                </>
-              )}
-
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Branch ID (BHF ID)

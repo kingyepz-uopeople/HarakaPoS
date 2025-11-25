@@ -296,22 +296,38 @@ export interface EtimsConfig {
   business_name: string;
   kra_pin: string;
   business_type: string;
-  cu_serial_number?: string;
-  cu_model?: string;
-  cu_status: 'active' | 'inactive' | 'pending';
+  
+  // OSCU (Online Sales Control Unit) - Cloud/System-to-System
+  oscu_device_id?: string; // Generated device identifier for OSCU
+  oscu_serial_number?: string; // Returned by KRA after initialization
+  oscu_status: 'active' | 'inactive' | 'pending';
+  
+  // Legacy fields (kept for backward compatibility, not used in OSCU)
+  cu_serial_number?: string; // Deprecated: use oscu_device_id
+  cu_model?: string; // Deprecated: not needed for OSCU
+  cu_status?: 'active' | 'inactive' | 'pending'; // Deprecated: use oscu_status
+  
+  // Environment & API
   environment: 'sandbox' | 'production';
-  api_base_url?: string;
-  bhf_id?: string;
-  tin?: string;
+  api_base_url?: string; // Overrides NEXT_PUBLIC_ETIMS_API_URL
+  bhf_id?: string; // Branch ID (usually '00' for single branch)
+  tin?: string; // Tax Identification Number
+  
+  // Initialization
   device_initialization_date?: string;
+  
+  // Invoice Numbering
   last_invoice_number: number;
   invoice_prefix: string;
+  
+  // Settings
   auto_submit: boolean;
   auto_submit_invoices?: boolean; // Alias for auto_submit
   require_internet: boolean;
   print_qr_code: boolean;
   enabled?: boolean; // Whether eTIMS is enabled at all
   default_vat_rate?: number; // Default VAT rate (e.g., 16)
+  
   created_at?: string;
   updated_at?: string;
 }
@@ -333,21 +349,32 @@ export interface EtimsInvoice {
   total_after_tax: number;
   vat_rate: number;
   tax_type: 'VAT_EXEMPT' | 'VAT_STANDARD' | 'VAT_ZERO';
+  payment_method?: string; // Cash, Card, Mobile, Credit
   submission_status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'failed';
   submission_date?: string;
+  
+  // KRA OSCU Response Fields
   kra_response?: any;
-  kra_invoice_number?: string;
-  kra_verification_url?: string;
-  qr_code_data?: string;
-  receipt_signature?: string;
+  kra_invoice_number?: string; // rcptNo from KRA
+  kra_verification_url?: string; // URL to verify receipt online
+  qr_code_url?: string; // bCode - QR Code URL from KRA
+  oscu_serial_number?: string; // csuSerialNo - Control Unit Serial from response
+  receipt_signature?: string; // rcptSign
   signature_date?: string;
+  
+  // Error handling
   error_message?: string;
   retry_count: number;
   last_retry_date?: string;
+  
+  // Audit
   created_by?: string;
   created_at?: string;
   updated_at?: string;
-  items?: EtimsInvoiceItem[]; // Joined data
+  
+  // Joined data
+  items?: EtimsInvoiceItem[];
+  notes?: string;
 }
 
 export interface EtimsInvoiceItem {
@@ -355,16 +382,20 @@ export interface EtimsInvoiceItem {
   invoice_id: string;
   item_sequence: number;
   item_code?: string;
+  item_class_code?: string; // KRA product classification (itemClsCd)
   item_name: string;
   quantity: number;
   unit_price: number;
   total_amount: number;
+  discount_rate?: number;
+  discount_amount?: number;
   tax_type: string;
-  vat_category?: string;
+  vat_category?: string; // A=16%, B=8%, C=Other, D=Zero-rated, E=Exempt
   vat_rate: number;
   vat_amount: number;
-  package_unit: string;
+  package_unit: string; // NT=Unit, BAG, BOX, etc.
   package_quantity?: number;
+  barcode?: string;
   created_at?: string;
 }
 

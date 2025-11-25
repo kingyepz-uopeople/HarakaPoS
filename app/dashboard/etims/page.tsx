@@ -107,24 +107,25 @@ export default function EtimsDashboardPage() {
       {/* Configuration Status */}
       {config ? (
         <div className={`p-4 rounded-lg mb-6 ${
-          config.cu_status === 'active' ? 'bg-green-50 border-2 border-green-500' :
-          config.cu_status === 'pending' ? 'bg-yellow-50 border-2 border-yellow-500' :
+          config.oscu_status === 'active' ? 'bg-green-50 border-2 border-green-500' :
+          config.oscu_status === 'pending' ? 'bg-yellow-50 border-2 border-yellow-500' :
           'bg-red-50 border-2 border-red-500'
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {config.cu_status === 'active' ? (
+              {config.oscu_status === 'active' ? (
                 <CheckCircle className="w-6 h-6 text-green-600" />
               ) : (
                 <AlertCircle className="w-6 h-6 text-yellow-600" />
               )}
               <div>
                 <p className="font-semibold">
-                  Control Unit Status: <span className="capitalize">{config.cu_status}</span>
+                  OSCU Status: <span className="capitalize">{config.oscu_status || 'Not Initialized'}</span>
                 </p>
                 <p className="text-sm text-gray-600">
                   Environment: <strong>{config.environment.toUpperCase()}</strong>
-                  {config.cu_serial_number && ` | Serial: ${config.cu_serial_number}`}
+                  {config.oscu_device_id && ` | Device: ${config.oscu_device_id}`}
+                  {config.oscu_serial_number && ` | Serial: ${config.oscu_serial_number}`}
                 </p>
               </div>
             </div>
