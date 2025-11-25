@@ -2,15 +2,34 @@
 -- OSCU (Online Sales Control Unit) Refactor
 -- Migrate from VSCU/Physical CU to OSCU REST API
 -- Kenya Revenue Authority eTIMS System-to-System Integration
+-- Date: 2025-02-05
 -- =====================================================
 
 -- Add OSCU-specific fields to etims_config
-ALTER TABLE etims_config
-  ADD COLUMN IF NOT EXISTS oscu_device_id TEXT,
-  ADD COLUMN IF NOT EXISTS oscu_serial_number TEXT,
-  ADD COLUMN IF NOT EXISTS oscu_status TEXT DEFAULT 'inactive' CHECK (oscu_status IN ('active', 'inactive', 'pending'));
+DO $$ 
+BEGIN
+  -- Add oscu_device_id column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_config' AND column_name='oscu_device_id') THEN
+    ALTER TABLE etims_config ADD COLUMN oscu_device_id TEXT;
+  END IF;
 
--- Add comment explaining deprecation
+  -- Add oscu_serial_number column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_config' AND column_name='oscu_serial_number') THEN
+    ALTER TABLE etims_config ADD COLUMN oscu_serial_number TEXT;
+  END IF;
+
+  -- Add oscu_status column with constraint
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_config' AND column_name='oscu_status') THEN
+    ALTER TABLE etims_config ADD COLUMN oscu_status TEXT DEFAULT 'inactive';
+    ALTER TABLE etims_config ADD CONSTRAINT oscu_status_check 
+      CHECK (oscu_status IN ('active', 'inactive', 'pending'));
+  END IF;
+END $$;
+
+-- Add comments explaining deprecation and new fields
 COMMENT ON COLUMN etims_config.cu_serial_number IS 'DEPRECATED: Use oscu_serial_number for OSCU (Online Sales Control Unit)';
 COMMENT ON COLUMN etims_config.cu_status IS 'DEPRECATED: Use oscu_status for OSCU';
 COMMENT ON COLUMN etims_config.cu_model IS 'DEPRECATED: Not needed for cloud-based OSCU';
@@ -19,11 +38,34 @@ COMMENT ON COLUMN etims_config.oscu_serial_number IS 'OSCU serial number (csuSer
 COMMENT ON COLUMN etims_config.oscu_status IS 'OSCU status: active, inactive, pending';
 
 -- Add OSCU-specific fields to etims_invoices
-ALTER TABLE etims_invoices
-  ADD COLUMN IF NOT EXISTS qr_code_url TEXT,
-  ADD COLUMN IF NOT EXISTS oscu_serial_number TEXT,
-  ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'cash' CHECK (payment_method IN ('cash', 'card', 'mpesa', 'bank_transfer', 'credit')),
-  ADD COLUMN IF NOT EXISTS notes TEXT;
+DO $$ 
+BEGIN
+  -- Add qr_code_url column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_invoices' AND column_name='qr_code_url') THEN
+    ALTER TABLE etims_invoices ADD COLUMN qr_code_url TEXT;
+  END IF;
+
+  -- Add oscu_serial_number column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_invoices' AND column_name='oscu_serial_number') THEN
+    ALTER TABLE etims_invoices ADD COLUMN oscu_serial_number TEXT;
+  END IF;
+
+  -- Add payment_method column with constraint
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_invoices' AND column_name='payment_method') THEN
+    ALTER TABLE etims_invoices ADD COLUMN payment_method TEXT DEFAULT 'cash';
+    ALTER TABLE etims_invoices ADD CONSTRAINT payment_method_check 
+      CHECK (payment_method IN ('cash', 'card', 'mpesa', 'bank_transfer', 'credit'));
+  END IF;
+
+  -- Add notes column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_invoices' AND column_name='notes') THEN
+    ALTER TABLE etims_invoices ADD COLUMN notes TEXT;
+  END IF;
+END $$;
 
 COMMENT ON COLUMN etims_invoices.qr_code_url IS 'QR code URL (bCode) from KRA response for receipt display';
 COMMENT ON COLUMN etims_invoices.oscu_serial_number IS 'OSCU serial number (csuSerialNo) from KRA at time of invoice submission';
@@ -31,37 +73,50 @@ COMMENT ON COLUMN etims_invoices.payment_method IS 'Payment method: cash, card, 
 COMMENT ON COLUMN etims_invoices.notes IS 'Additional notes or remarks for the invoice';
 
 -- Add OSCU-specific fields to etims_invoice_items
-ALTER TABLE etims_invoice_items
-  ADD COLUMN IF NOT EXISTS item_class_code TEXT,
-  ADD COLUMN IF NOT EXISTS discount_rate DECIMAL(5, 2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(10, 2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS barcode TEXT;
+DO $$ 
+BEGIN
+  -- Add item_class_code column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_invoice_items' AND column_name='item_class_code') THEN
+    ALTER TABLE etims_invoice_items ADD COLUMN item_class_code TEXT;
+  END IF;
+
+  -- Add discount_rate column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_invoice_items' AND column_name='discount_rate') THEN
+    ALTER TABLE etims_invoice_items ADD COLUMN discount_rate DECIMAL(5, 2) DEFAULT 0;
+  END IF;
+
+  -- Add discount_amount column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_invoice_items' AND column_name='discount_amount') THEN
+    ALTER TABLE etims_invoice_items ADD COLUMN discount_amount DECIMAL(10, 2) DEFAULT 0;
+  END IF;
+
+  -- Add barcode column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='etims_invoice_items' AND column_name='barcode') THEN
+    ALTER TABLE etims_invoice_items ADD COLUMN barcode TEXT;
+  END IF;
+END $$;
 
 COMMENT ON COLUMN etims_invoice_items.item_class_code IS 'KRA product classification code (itemClsCd)';
 COMMENT ON COLUMN etims_invoice_items.discount_rate IS 'Discount rate as percentage (0-100)';
 COMMENT ON COLUMN etims_invoice_items.discount_amount IS 'Discount amount in currency';
 COMMENT ON COLUMN etims_invoice_items.barcode IS 'Product barcode for KRA item tracking';
 
--- Create index for faster OSCU lookups
+-- Create indexes for faster OSCU lookups
 CREATE INDEX IF NOT EXISTS idx_etims_config_oscu_device_id ON etims_config(oscu_device_id);
 CREATE INDEX IF NOT EXISTS idx_etims_invoices_oscu_serial ON etims_invoices(oscu_serial_number);
 CREATE INDEX IF NOT EXISTS idx_etims_invoices_qr_code ON etims_invoices(qr_code_url);
 CREATE INDEX IF NOT EXISTS idx_etims_invoice_items_class_code ON etims_invoice_items(item_class_code);
 
--- Update updated_at trigger for etims_config if not exists
-CREATE OR REPLACE FUNCTION update_etims_config_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trigger_etims_config_updated_at ON etims_config;
-CREATE TRIGGER trigger_etims_config_updated_at
-  BEFORE UPDATE ON etims_config
-  FOR EACH ROW
-  EXECUTE FUNCTION update_etims_config_updated_at();
-
--- Migration note
+-- Update table comments
 COMMENT ON TABLE etims_config IS 'eTIMS configuration using OSCU (Online Sales Control Unit) - cloud-based REST API integration, no physical device required';
+
+-- Migration complete
+-- Next steps:
+-- 1. Configure NEXT_PUBLIC_ETIMS_API_URL environment variable
+-- 2. Update KRA PIN in etims_config table
+-- 3. Initialize OSCU via API (no physical device needed)
+-- 4. Test in sandbox environment
