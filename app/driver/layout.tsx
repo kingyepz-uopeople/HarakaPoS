@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Home, Truck, User, Bell, Package } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import DriverNotifications from "@/components/DriverNotifications";
 
 /**
  * Driver Dashboard Layout
@@ -17,30 +18,12 @@ export default function DriverLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [notifications, setNotifications] = useState(0);
   const [driverName, setDriverName] = useState("");
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
     checkAuth();
-    fetchUnreadNotifications();
-
-    // Real-time notification count
-    const channel = supabase
-      .channel("driver-notification-count")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        () => {
-          fetchUnreadNotifications();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   async function checkAuth() {
@@ -64,23 +47,6 @@ export default function DriverLayout({
 
     setDriverName(userData.name);
     setLoading(false);
-  }
-
-  async function fetchUnreadNotifications() {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { count } = await supabase
-        .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("is_read", false);
-
-      setNotifications(count || 0);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
   }
 
   const navItems = [
@@ -110,17 +76,7 @@ export default function DriverLayout({
             <p className="text-xs opacity-90">Welcome back,</p>
             <h1 className="text-base sm:text-lg font-bold">{driverName || "Driver"}</h1>
           </div>
-          <Link
-            href="/driver/notifications"
-            className="relative p-2 hover:bg-white/10 rounded-full transition-colors"
-          >
-            <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
-            {notifications > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {notifications}
-              </span>
-            )}
-          </Link>
+          <DriverNotifications />
         </div>
       </div>
 

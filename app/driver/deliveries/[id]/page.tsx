@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
@@ -22,6 +23,12 @@ import {
   Truck,
   Radio
 } from "lucide-react";
+
+// Dynamic import to avoid SSR issues with JsBarcode
+const BarcodeDisplay = dynamic(
+  () => import("@/components/barcode/BarcodeDisplay"),
+  { ssr: false, loading: () => <div className="h-16 bg-gray-100 animate-pulse rounded" /> }
+);
 
 export default function DeliveryDetailsPage() {
   const params = useParams();
@@ -480,18 +487,13 @@ export default function DeliveryDetailsPage() {
                 <span className="text-sm text-gray-500">Generating barcode...</span>
               ) : orderBarcode ? (
                 <div className="flex-1">
-                  {/* Lazy import to avoid SSR issues */}
-                  {/* @ts-ignore */}
-                  <div>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {/* Render via component for crisp print */}
-                    <div className="bg-white rounded p-2 inline-block">
-                      {/* Using dynamic import to avoid server-side JsBarcode */}
-                      {(() => {
-                        const BarcodeDisplay = require('@/components/barcode/BarcodeDisplay').default;
-                        return <BarcodeDisplay value={orderBarcode} height={60} width={2} fontSize={14} />;
-                      })()}
-                    </div>
+                  <div className="bg-white rounded p-2 inline-block">
+                    <BarcodeDisplay 
+                      value={orderBarcode} 
+                      height={60} 
+                      width={2} 
+                      fontSize={14} 
+                    />
                   </div>
                 </div>
               ) : (

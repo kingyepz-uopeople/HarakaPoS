@@ -60,11 +60,20 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 2) Trigger: after INSERT on orders → ensure barcode
+-- Create a wrapper trigger function to call ensure_order_barcode with NEW.id
+CREATE OR REPLACE FUNCTION on_order_insert_ensure_barcode()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM ensure_order_barcode(NEW.id);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 DROP TRIGGER IF EXISTS trg_orders_ensure_barcode ON orders;
 CREATE TRIGGER trg_orders_ensure_barcode
 AFTER INSERT ON orders
 FOR EACH ROW
-EXECUTE FUNCTION ensure_order_barcode(NEW.id);
+EXECUTE FUNCTION on_order_insert_ensure_barcode();
 
 -- 3) Helper: notify_driver(p_user_id, p_title, p_message, p_link)
 CREATE OR REPLACE FUNCTION notify_driver(
