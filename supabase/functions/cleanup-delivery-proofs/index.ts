@@ -9,7 +9,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 serve(async (req: Request) => {
   try {
     // Get Supabase credentials from environment
+    // @ts-ignore - Deno global
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    // @ts-ignore - Deno global
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!supabaseUrl || !supabaseServiceKey) {

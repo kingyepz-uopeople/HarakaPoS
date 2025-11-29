@@ -53,24 +53,24 @@ export default function DriverNotifications() {
     }
   }
 
-  function setupRealtimeSubscription() {
-    const { data: { user } } = supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
+  async function setupRealtimeSubscription() {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
 
-      const channel = supabase
-        .channel('driver-notifications')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${data.user.id}`,
-          },
-          (payload) => {
-            const newNotification = payload.new as Notification;
-            setNotifications((prev) => [newNotification, ...prev]);
-            setUnreadCount((prev) => prev + 1);
+    const channel = supabase
+      .channel('driver-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${data.user.id}`,
+        },
+        (payload) => {
+          const newNotification = payload.new as Notification;
+          setNotifications((prev) => [newNotification, ...prev]);
+          setUnreadCount((prev) => prev + 1);
 
             // Optional: Show browser notification
             if ('Notification' in window && Notification.permission === 'granted') {
