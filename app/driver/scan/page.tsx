@@ -10,6 +10,7 @@ import {
   getCurrentLocation,
   updateBarcodeStatus 
 } from '@/lib/barcode-utils';
+import { uploadProofPhoto } from '@/lib/supabase/storage';
 import { BarcodeStatus, ScanType } from '@/lib/types';
 import { 
   CheckCircle, 
@@ -141,21 +142,22 @@ export default function DriverScanPage() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.capture = 'environment' as any;
-    
+    // @ts-ignore: capture hint supported on mobile browsers
+    input.capture = 'environment';
+
     input.onchange = async (e: any) => {
       const file = e.target?.files?.[0];
-      if (file) {
-        // TODO: Upload to Supabase storage
-        // For now, create a local preview
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPhotoUrl(reader.result as string);
-        };
-        reader.readAsDataURL(file);
+      if (file && scannedBarcode) {
+        // Upload to Supabase Storage
+        const res = await uploadProofPhoto(file, { prefix: `barcode/${scannedBarcode}` });
+        if (res.success && res.url) {
+          setPhotoUrl(res.url);
+        } else {
+          console.error('Photo upload failed:', res.error);
+        }
       }
     };
-    
+
     input.click();
   };
 

@@ -32,6 +32,8 @@ export default function DeliveryDetailsPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash");
   const [customerNotes, setCustomerNotes] = useState("");
+  const [orderBarcode, setOrderBarcode] = useState<string | null>(null);
+  const [loadingBarcode, setLoadingBarcode] = useState<boolean>(false);
   const supabase = createClient();
 
   // Real-time location tracking
@@ -94,6 +96,39 @@ export default function DeliveryDetailsPage() {
           delivery_longitude: data.delivery_longitude,
           delivery_address: data.delivery_address || customer?.location || "N/A",
         });
+
+        // Fetch or create barcode for this order
+        try {
+          setLoadingBarcode(true);
+          // Try find barcode linked to this order
+          const { data: bc } = await supabase
+            .from('delivery_barcodes')
+            .select('barcode')
+            .eq('order_id', id)
+            .limit(1)
+            .maybeSingle();
+
+          if (bc?.barcode) {
+            setOrderBarcode(bc.barcode);
+          } else {
+            // Generate one on-demand using RPC util
+            const gen = await import('@/lib/barcode-utils');
+            const result = await gen.generateDeliveryBarcode({
+              orderId: id,
+              saleId: data.sale_id || undefined,
+              customerName: customer?.name || 'Customer',
+              customerPhone: customer?.phone || undefined,
+              deliveryLocation: data.delivery_address || customer?.location || undefined,
+              quantityKg: data.quantity_kg,
+              totalAmount: data.total_price,
+            });
+            if (result.success && result.barcode) setOrderBarcode(result.barcode);
+          }
+        } catch (e) {
+          console.error('Barcode generation error:', e);
+        } finally {
+          setLoadingBarcode(false);
+        }
       }
     } catch (error) {
       console.error("Error loading delivery:", error);
@@ -187,6 +222,18 @@ export default function DeliveryDetailsPage() {
         .eq("id", delivery.id);
 
       if (orderError) throw orderError;
+
+      // 4. Update barcode status to delivered (if present)
+      try {
+        if (orderBarcode) {
+          const utils = await import('@/lib/barcode-utils');
+          await utils.updateBarcodeStatus(orderBarcode, 'delivered', 'delivery', {
+            notes: customerNotes || undefined,
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to update barcode delivered status:', e);
+      }
 
       alert("Delivery completed successfully!");
       setShowPaymentModal(false);
@@ -424,6 +471,40 @@ export default function DeliveryDetailsPage() {
               <span className="font-medium text-gray-900">{delivery.delivery_time}</span>
             </div>
           )}
+
+          {/* Barcode */}
+          <div className="mt-4">
+            <p className="text-sm text-gray-500 mb-2">Delivery Barcode</p>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+              {loadingBarcode ? (
+                <span className="text-sm text-gray-500">Generating barcode...</span>
+              ) : orderBarcode ? (
+                <div className="flex-1">
+                  {/* Lazy import to avoid SSR issues */}
+                  {/* @ts-ignore */}
+                  <div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {/* Render via component for crisp print */}
+                    <div className="bg-white rounded p-2 inline-block">
+                      {/* Using dynamic import to avoid server-side JsBarcode */}
+                      {(() => {
+                        const BarcodeDisplay = require('@/components/barcode/BarcodeDisplay').default;
+                        return <BarcodeDisplay value={orderBarcode} height={60} width={2} fontSize={14} />;
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-sm text-gray-500">No barcode available</span>
+              )}
+              <button
+                onClick={() => router.push('/driver/scan')}
+                className="ml-3 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              >
+                Open Scanner
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
