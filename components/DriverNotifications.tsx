@@ -72,21 +72,20 @@ export default function DriverNotifications() {
           setNotifications((prev) => [newNotification, ...prev]);
           setUnreadCount((prev) => prev + 1);
 
-            // Optional: Show browser notification
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(newNotification.title, {
-                body: newNotification.message,
-                icon: '/icon-192x192.png',
-              });
-            }
+          // Optional: Show browser notification
+          if ('Notification' in window && window.Notification.permission === 'granted') {
+            new window.Notification(newNotification.title, {
+              body: newNotification.message,
+              icon: '/icon-192x192.png',
+            });
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    });
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }
 
   async function markAsRead(notificationId: string) {
