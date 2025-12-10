@@ -1,4 +1,4 @@
-# 🥔 HarakaPOS - Potato Delivery Management System# 🥔 HarakaPOS - Point of Sale & Delivery Management System
+#  HarakaPOS - Potato Delivery Management System#  HarakaPOS - Point of Sale & Delivery Management System
 
 
 
