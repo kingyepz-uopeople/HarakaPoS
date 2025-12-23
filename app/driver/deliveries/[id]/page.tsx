@@ -41,6 +41,8 @@ export default function DeliveryDetailsPage() {
   const [customerNotes, setCustomerNotes] = useState("");
   const [orderBarcode, setOrderBarcode] = useState<string | null>(null);
   const [loadingBarcode, setLoadingBarcode] = useState<boolean>(false);
+  const [geocodedCoords, setGeocodedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const supabase = createClient();
 
   // Real-time location tracking
@@ -73,6 +75,54 @@ export default function DeliveryDetailsPage() {
       loadDelivery(params.id as string);
     }
   }, [params.id]);
+
+  // Geocode address when delivery loads but has no coordinates
+  useEffect(() => {
+    async function geocodeAddress() {
+      if (!delivery) return;
+      // Already has coordinates
+      if (delivery.delivery_latitude && delivery.delivery_longitude) return;
+      // No address to geocode
+      const address = delivery.delivery_address || delivery.location;
+      if (!address || address === "N/A") return;
+      
+      setIsGeocoding(true);
+      try {
+        // Use Nominatim (OpenStreetMap) for free geocoding
+        const encodedAddress = encodeURIComponent(address + ", Kenya");
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`,
+          { headers: { 'User-Agent': 'HarakaPoS/1.0' } }
+        );
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          const { lat, lon } = data[0];
+          const coords = { lat: parseFloat(lat), lng: parseFloat(lon) };
+          setGeocodedCoords(coords);
+          
+          // Optionally save the geocoded coordinates to the database for future use
+          try {
+            await supabase
+              .from('orders')
+              .update({ 
+                delivery_latitude: coords.lat, 
+                delivery_longitude: coords.lng 
+              })
+              .eq('id', delivery.id);
+          } catch (e) {
+            console.log('Could not save geocoded coordinates:', e);
+          }
+        }
+      } catch (error) {
+        console.error('Geocoding error:', error);
+      } finally {
+        setIsGeocoding(false);
+      }
+    }
+    
+    geocodeAddress();
+  }, [delivery?.id, delivery?.delivery_latitude, delivery?.delivery_longitude, delivery?.delivery_address, delivery?.location]);
 
   async function loadDelivery(id: string) {
     try {
@@ -386,33 +436,56 @@ export default function DeliveryDetailsPage() {
       </div>
 
       {/* Embedded Map - All 3 Map Providers! */}
-      {(delivery.delivery_latitude && delivery.delivery_longitude) ? (
-        <DriverDeliveryMap
-          origin={{
-            lat: currentPosition?.latitude || -1.286389, // Use GPS if available, else default Nairobi
-            lng: currentPosition?.longitude || 36.817223,
-            address: "Your Location"
-          }}
-          destination={{
-            lat: delivery.delivery_latitude,
-            lng: delivery.delivery_longitude,
-            address: delivery.delivery_address || delivery.location
-          }}
-          className="rounded-2xl overflow-hidden border border-gray-100"
-          showNavigateButton={true}
-        />
-      ) : (
-        <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 text-center">
-          <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-600">No GPS coordinates available for this delivery</p>
-          <button
-            onClick={openNavigation}
-            className="mt-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-          >
-            Open in Google Maps →
-          </button>
-        </div>
-      )}
+      {(() => {
+        // Use delivery coordinates or geocoded coordinates
+        const destLat = delivery.delivery_latitude || geocodedCoords?.lat;
+        const destLng = delivery.delivery_longitude || geocodedCoords?.lng;
+        const hasCoordinates = destLat && destLng;
+        
+        if (isGeocoding) {
+          return (
+            <div className="bg-gray-50 rounded-2xl border border-gray-200 p-6 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-3"></div>
+              <p className="text-sm text-gray-600">Finding location on map...</p>
+            </div>
+          );
+        }
+        
+        if (hasCoordinates) {
+          return (
+            <DriverDeliveryMap
+              origin={{
+                lat: currentPosition?.latitude || -1.286389,
+                lng: currentPosition?.longitude || 36.817223,
+                address: "Your Location"
+              }}
+              destination={{
+                lat: destLat,
+                lng: destLng,
+                address: delivery.delivery_address || delivery.location
+              }}
+              className="rounded-2xl overflow-hidden border border-gray-100"
+              showNavigateButton={true}
+            />
+          );
+        }
+        
+        // Fallback when no coordinates available
+        return (
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 text-center">
+            <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-600 mb-2">Could not find exact location on map</p>
+            <p className="text-xs text-gray-500 mb-3">{delivery.delivery_address || delivery.location}</p>
+            <button
+              onClick={openNavigation}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+            >
+              <Navigation className="w-4 h-4" />
+              Open in Google Maps
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Quick Navigation Actions */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -420,13 +493,15 @@ export default function DeliveryDetailsPage() {
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => {
-              if (delivery.delivery_latitude && delivery.delivery_longitude) {
+              const destLat = delivery.delivery_latitude || geocodedCoords?.lat;
+              const destLng = delivery.delivery_longitude || geocodedCoords?.lng;
+              if (destLat && destLng) {
                 const origin = currentPosition 
                   ? `${currentPosition.latitude},${currentPosition.longitude}` 
                   : '';
                 const url = origin 
-                  ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${delivery.delivery_latitude},${delivery.delivery_longitude}&travelmode=driving`
-                  : `https://www.google.com/maps/dir/?api=1&destination=${delivery.delivery_latitude},${delivery.delivery_longitude}&travelmode=driving`;
+                  ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destLat},${destLng}&travelmode=driving`
+                  : `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
                 window.open(url, '_blank');
               } else {
                 openNavigation();
@@ -441,12 +516,19 @@ export default function DeliveryDetailsPage() {
           </button>
           <button
             onClick={() => {
-              if (delivery.delivery_latitude && delivery.delivery_longitude) {
-                window.open(`https://waze.com/ul?ll=${delivery.delivery_latitude},${delivery.delivery_longitude}&navigate=yes`, '_blank');
+              const destLat = delivery.delivery_latitude || geocodedCoords?.lat;
+              const destLng = delivery.delivery_longitude || geocodedCoords?.lng;
+              if (destLat && destLng) {
+                window.open(`https://waze.com/ul?ll=${destLat},${destLng}&navigate=yes`, '_blank');
+              } else {
+                // Fallback to address search in Waze
+                const address = delivery.delivery_address || delivery.location;
+                if (address) {
+                  window.open(`https://waze.com/ul?q=${encodeURIComponent(address)}`, '_blank');
+                }
               }
             }}
-            disabled={!delivery.delivery_latitude || !delivery.delivery_longitude}
-            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
