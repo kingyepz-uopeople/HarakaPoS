@@ -134,6 +134,14 @@ export function useDriverLocationTracking({
     }
   };
 
+  // Use ref to avoid stale closure in interval
+  const currentPositionRef = useRef<LocationPosition | null>(null);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    currentPositionRef.current = currentPosition;
+  }, [currentPosition]);
+
   // Start tracking
   useEffect(() => {
     if (!enabled || !orderId) {
@@ -167,15 +175,16 @@ export function useDriverLocationTracking({
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 0,
       }
     );
 
-    // Broadcast at regular intervals
+    // Broadcast at regular intervals using ref to avoid stale closure
     intervalRef.current = setInterval(() => {
-      if (currentPosition) {
-        broadcastPosition(currentPosition);
+      const pos = currentPositionRef.current;
+      if (pos) {
+        broadcastPosition(pos);
       }
     }, updateInterval);
 
@@ -183,17 +192,21 @@ export function useDriverLocationTracking({
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
       }
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
       setIsTracking(false);
     };
   }, [enabled, orderId, updateInterval]);
 
-  // Broadcast immediately when position changes
+  // Broadcast immediately when position changes (first update)
+  const hasInitialBroadcast = useRef(false);
   useEffect(() => {
-    if (enabled && currentPosition) {
+    if (enabled && currentPosition && !hasInitialBroadcast.current) {
+      hasInitialBroadcast.current = true;
       broadcastPosition(currentPosition);
     }
   }, [currentPosition, enabled]);

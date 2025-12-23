@@ -157,3 +157,20 @@
     @apply p-3 sm:p-3.5 lg:p-4;
   }
 }
+
+/* Hide Leaflet Routing Machine instructions panel on mobile */
+.leaflet-routing-container {
+  display: none !important;
+}
+
+/* Ensure map controls don't overflow */
+.leaflet-control-container {
+  position: absolute;
+  z-index: 1000;
+}
+
+/* Barcode responsive styles */
+.barcode-container svg {
+  max-width: 100%;
+  height: auto;
+}

@@ -60,8 +60,8 @@ export default function BarcodeDisplay({
   }
 
   return (
-    <div className={`barcode-container ${className}`}>
-      <svg ref={svgRef}></svg>
+    <div className={`barcode-container overflow-hidden ${className}`}>
+      <svg ref={svgRef} className="max-w-full h-auto"></svg>
     </div>
   );
 }

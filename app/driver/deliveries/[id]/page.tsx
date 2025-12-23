@@ -386,19 +386,32 @@ export default function DeliveryDetailsPage() {
       </div>
 
       {/* Embedded Map - All 3 Map Providers! */}
-      <DriverDeliveryMap
-        origin={{
-          lat: -1.286389, // Default Nairobi (can be replaced with driver's current location)
-          lng: 36.817223,
-          address: "Your Location"
-        }}
-        destination={{
-          lat: delivery.delivery_latitude,
-          lng: delivery.delivery_longitude,
-          address: delivery.delivery_address || delivery.location
-        }}
-        className="rounded-2xl overflow-hidden border border-gray-100"
-      />
+      {(delivery.delivery_latitude && delivery.delivery_longitude) ? (
+        <DriverDeliveryMap
+          origin={{
+            lat: currentPosition?.latitude || -1.286389, // Use GPS if available, else default Nairobi
+            lng: currentPosition?.longitude || 36.817223,
+            address: "Your Location"
+          }}
+          destination={{
+            lat: delivery.delivery_latitude,
+            lng: delivery.delivery_longitude,
+            address: delivery.delivery_address || delivery.location
+          }}
+          className="rounded-2xl overflow-hidden border border-gray-100"
+        />
+      ) : (
+        <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 text-center">
+          <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+          <p className="text-sm text-gray-600">No GPS coordinates available for this delivery</p>
+          <button
+            onClick={openNavigation}
+            className="mt-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+          >
+            Open in Google Maps →
+          </button>
+        </div>
+      )}
 
       {/* Customer Info */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
@@ -482,29 +495,32 @@ export default function DeliveryDetailsPage() {
           {/* Barcode */}
           <div className="mt-4">
             <p className="text-sm text-gray-500 mb-2">Delivery Barcode</p>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between">
-              {loadingBarcode ? (
-                <span className="text-sm text-gray-500">Generating barcode...</span>
-              ) : orderBarcode ? (
-                <div className="flex-1">
-                  <div className="bg-white rounded p-2 inline-block">
-                    <BarcodeDisplay 
-                      value={orderBarcode} 
-                      height={60} 
-                      width={2} 
-                      fontSize={14} 
-                    />
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                {loadingBarcode ? (
+                  <span className="text-sm text-gray-500">Generating barcode...</span>
+                ) : orderBarcode ? (
+                  <div className="w-full overflow-x-auto">
+                    <div className="bg-white rounded p-2 inline-block min-w-0 max-w-full">
+                      <BarcodeDisplay 
+                        value={orderBarcode} 
+                        height={50} 
+                        width={1.5} 
+                        fontSize={12} 
+                        className="max-w-full"
+                      />
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <span className="text-sm text-gray-500">No barcode available</span>
-              )}
-              <button
-                onClick={() => router.push('/driver/scan')}
-                className="ml-3 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-              >
-                Open Scanner
-              </button>
+                ) : (
+                  <span className="text-sm text-gray-500">No barcode available</span>
+                )}
+                <button
+                  onClick={() => router.push('/driver/scan')}
+                  className="w-full sm:w-auto shrink-0 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                >
+                  Open Scanner
+                </button>
+              </div>
             </div>
           </div>
         </div>

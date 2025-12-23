@@ -29,13 +29,24 @@ interface DriverDeliveryMapProps {
 type MapType = 'osm' | 'mapbox' | 'google';
 
 export default function DriverDeliveryMap({ origin, destination, className = '' }: DriverDeliveryMapProps) {
-  const [mapType, setMapType] = useState<MapType>('google');
+  const [mapType, setMapType] = useState<MapType>('osm'); // Default to OSM for reliability
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [distance, setDistance] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
   const [routeLoaded, setRouteLoaded] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [useCurrentLocation, setUseCurrentLocation] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+
+  // Validate coordinates helper
+  const isValidCoord = (lat: number | undefined | null, lng: number | undefined | null): boolean => {
+    return typeof lat === 'number' && typeof lng === 'number' && 
+           !Number.isNaN(lat) && !Number.isNaN(lng) &&
+           lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  };
+
+  const hasValidDestination = isValidCoord(destination?.lat, destination?.lng);
+  const hasValidOrigin = isValidCoord(origin?.lat, origin?.lng);
 
   // OSM/Leaflet refs
   const osmMapRef = useRef<HTMLDivElement>(null);
@@ -74,9 +85,9 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
   // Initialize OSM Map
   useEffect(() => {
     if (mapType !== 'osm' || !osmMapRef.current || osmMapInstance.current) return;
+    if (!hasValidDestination) return;
 
-    const destValid = destination && typeof destination.lat === 'number' && typeof destination.lng === 'number' && !Number.isNaN(destination.lat) && !Number.isNaN(destination.lng);
-    const initialCenter: [number, number] = destValid ? [destination.lat, destination.lng] : [origin.lat, origin.lng];
+    const initialCenter: [number, number] = [destination.lat, destination.lng];
 
     const map = L.map(osmMapRef.current).setView(initialCenter, 13);
 
@@ -87,25 +98,44 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
 
     osmMapInstance.current = map;
 
+    // Force map to recalculate size after mount
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
     return () => {
       if (osmMapInstance.current) {
         osmMapInstance.current.remove();
         osmMapInstance.current = null;
       }
     };
-  }, [mapType]);
+  }, [mapType, hasValidDestination, destination?.lat, destination?.lng]);
 
   // Create OSM routing
   useEffect(() => {
     if (mapType !== 'osm') return;
     const map = osmMapInstance.current;
     if (!map) return;
+    if (!hasValidDestination) return;
 
     const start = (useCurrentLocation && currentLocation) ? currentLocation : origin;
-    const startValid = start && typeof start.lat === 'number' && typeof start.lng === 'number' && !Number.isNaN(start.lat) && !Number.isNaN(start.lng);
-    const destValid = destination && typeof destination.lat === 'number' && typeof destination.lng === 'number' && !Number.isNaN(destination.lat) && !Number.isNaN(destination.lng);
+    const startValid = start && isValidCoord(start.lat, start.lng);
 
-    if (!startValid || !destValid) return;
+    if (!startValid) {
+      // Just show destination marker without routing
+      L.marker([destination.lat, destination.lng], {
+        icon: L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        })
+      }).addTo(map).bindPopup(destination.address || 'Destination');
+      setRouteLoaded(true);
+      return;
+    }
 
     if (routingControl.current) {
       try {
@@ -115,46 +145,67 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
       }
     }
 
-    const L_routing = (L as any).Routing;
-    const control = L_routing.control({
-      waypoints: [
-        L.latLng(start.lat, start.lng),
-        L.latLng(destination.lat, destination.lng)
-      ],
-      routeWhileDragging: false,
-      addWaypoints: false,
-      lineOptions: {
-        styles: [{ color: '#10b981', weight: 6, opacity: 0.8 }]
-      },
-      createMarker: function(i: number, waypoint: any) {
-        const marker = L.marker(waypoint.latLng, {
-          draggable: false,
-          icon: L.icon({
-            iconUrl: i === 0 
-              ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
-              : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-          })
-        });
-        return marker;
+    try {
+      const L_routing = (L as any).Routing;
+      if (!L_routing) {
+        console.error('Leaflet Routing Machine not loaded');
+        setMapError('Routing not available');
+        setRouteLoaded(true);
+        return;
       }
-    }).addTo(map);
+      
+      const control = L_routing.control({
+        waypoints: [
+          L.latLng(start.lat, start.lng),
+          L.latLng(destination.lat, destination.lng)
+        ],
+        routeWhileDragging: false,
+        addWaypoints: false,
+        show: false, // Hide the routing instructions panel
+        lineOptions: {
+          styles: [{ color: '#10b981', weight: 6, opacity: 0.8 }]
+        },
+        createMarker: function(i: number, waypoint: any) {
+          const marker = L.marker(waypoint.latLng, {
+            draggable: false,
+            icon: L.icon({
+              iconUrl: i === 0 
+                ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
+                : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+              shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+              iconSize: [25, 41],
+              iconAnchor: [12, 41],
+              popupAnchor: [1, -34],
+              shadowSize: [41, 41]
+            })
+          });
+          return marker;
+        }
+      }).addTo(map);
 
-    control.on('routesfound', function(e: any) {
-      const routes = e.routes;
-      const summary = routes[0].summary;
-      setDistance(`${(summary.totalDistance / 1000).toFixed(1)} km`);
-      const hours = Math.floor(summary.totalTime / 3600);
-      const minutes = Math.round((summary.totalTime % 3600) / 60);
-      setDuration(hours > 0 ? `${hours}h ${minutes}m` : `${minutes} min`);
+      control.on('routesfound', function(e: any) {
+        const routes = e.routes;
+        const summary = routes[0].summary;
+        setDistance(`${(summary.totalDistance / 1000).toFixed(1)} km`);
+        const hours = Math.floor(summary.totalTime / 3600);
+        const minutes = Math.round((summary.totalTime % 3600) / 60);
+        setDuration(hours > 0 ? `${hours}h ${minutes}m` : `${minutes} min`);
+        setRouteLoaded(true);
+        setMapError(null);
+      });
+
+      control.on('routingerror', function(e: any) {
+        console.error('Routing error:', e);
+        setMapError('Could not calculate route');
+        setRouteLoaded(true);
+      });
+
+      routingControl.current = control;
+    } catch (err) {
+      console.error('Error creating routing control:', err);
+      setMapError('Routing initialization failed');
       setRouteLoaded(true);
-    });
-
-    routingControl.current = control;
+    }
 
     return () => {
       if (routingControl.current && map) {
@@ -164,15 +215,18 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
         routingControl.current = null;
       }
     };
-  }, [mapType, useCurrentLocation, currentLocation, origin, destination]);
+  }, [mapType, useCurrentLocation, currentLocation, origin, destination, hasValidDestination]);
 
   // Initialize Mapbox Map
   useEffect(() => {
     if (mapType !== 'mapbox' || !mapboxMapRef.current || mapboxMapInstance.current) return;
+    if (!hasValidDestination) return;
 
     mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
     const start = (useCurrentLocation && currentLocation) ? currentLocation : origin;
+    const startValid = start && isValidCoord(start.lat, start.lng);
+    
     const map = new mapboxgl.Map({
       container: mapboxMapRef.current,
       style: 'mapbox://styles/mapbox/streets-v12',
@@ -180,24 +234,26 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
       zoom: 12,
     });
 
-    // Add markers
-    new mapboxgl.Marker({ color: '#10b981' })
-      .setLngLat([start.lng, start.lat])
-      .addTo(map);
-
+    // Add destination marker
     new mapboxgl.Marker({ color: '#ef4444' })
       .setLngLat([destination.lng, destination.lat])
       .addTo(map);
 
-    // Get directions
-    fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${destination.lng},${destination.lat}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.routes && data.routes[0]) {
-          const route = data.routes[0];
-          setDistance(`${(route.distance / 1000).toFixed(1)} km`);
-          const minutes = Math.round(route.duration / 60);
-          setDuration(minutes > 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} min`);
+    // Add start marker if valid
+    if (startValid) {
+      new mapboxgl.Marker({ color: '#10b981' })
+        .setLngLat([start.lng, start.lat])
+        .addTo(map);
+
+      // Get directions
+      fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${destination.lng},${destination.lat}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.routes && data.routes[0]) {
+            const route = data.routes[0];
+            setDistance(`${(route.distance / 1000).toFixed(1)} km`);
+            const minutes = Math.round(route.duration / 60);
+            setDuration(minutes > 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} min`);
           setRouteLoaded(true);
 
           map.on('load', () => {
@@ -226,7 +282,15 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
             });
           });
         }
+      })
+      .catch(err => {
+        console.error('Mapbox directions error:', err);
+        setRouteLoaded(true);
       });
+    } else {
+      // No valid start point, just show destination
+      setRouteLoaded(true);
+    }
 
     mapboxMapInstance.current = map;
 
@@ -236,11 +300,12 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
         mapboxMapInstance.current = null;
       }
     };
-  }, [mapType, useCurrentLocation, currentLocation, origin, destination]);
+  }, [mapType, useCurrentLocation, currentLocation, origin, destination, hasValidDestination]);
 
   // Initialize Google Maps
   useEffect(() => {
-    if (mapType !== 'google' || !googleMapRef.current || !GOOGLE_MAPS_KEY) return;
+    if (mapType !== 'google' || !googleMapRef.current) return;
+    if (!hasValidDestination) return;
 
     const initGoogleMap = async () => {
       try {
@@ -252,44 +317,59 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
         }
 
         const start = (useCurrentLocation && currentLocation) ? currentLocation : origin;
+        const startValid = start && isValidCoord(start.lat, start.lng);
         
         const map = new google.maps.Map(googleMapRef.current!, {
           center: { lat: destination.lat, lng: destination.lng },
           zoom: 12,
         });
 
-        directionsService.current = new google.maps.DirectionsService();
-        directionsRenderer.current = new google.maps.DirectionsRenderer({
+        // Add destination marker
+        new google.maps.Marker({
+          position: { lat: destination.lat, lng: destination.lng },
           map: map,
-          suppressMarkers: false,
-          polylineOptions: {
-            strokeColor: '#10b981',
-            strokeWeight: 6,
-            strokeOpacity: 0.8
-          }
+          title: destination.address || 'Destination'
         });
 
-        const request = {
-          origin: { lat: start.lat, lng: start.lng },
-          destination: { lat: destination.lat, lng: destination.lng },
-          travelMode: google.maps.TravelMode.DRIVING
-        };
+        if (startValid) {
+          directionsService.current = new google.maps.DirectionsService();
+          directionsRenderer.current = new google.maps.DirectionsRenderer({
+            map: map,
+            suppressMarkers: false,
+            polylineOptions: {
+              strokeColor: '#10b981',
+              strokeWeight: 6,
+              strokeOpacity: 0.8
+            }
+          });
 
-        directionsService.current.route(request, (result, status) => {
-          if (status === 'OK' && result) {
-            directionsRenderer.current?.setDirections(result);
-            const route = result.routes[0].legs[0];
-            setDistance(route.distance?.text || '');
-            setDuration(route.duration?.text || '');
-            setRouteLoaded(true);
-          } else {
-            console.error('Directions request failed:', status);
-          }
-        });
+          const request = {
+            origin: { lat: start.lat, lng: start.lng },
+            destination: { lat: destination.lat, lng: destination.lng },
+            travelMode: google.maps.TravelMode.DRIVING
+          };
+
+          directionsService.current.route(request, (result, status) => {
+            if (status === 'OK' && result) {
+              directionsRenderer.current?.setDirections(result);
+              const route = result.routes[0].legs[0];
+              setDistance(route.distance?.text || '');
+              setDuration(route.duration?.text || '');
+              setRouteLoaded(true);
+            } else {
+              console.error('Directions request failed:', status);
+              setRouteLoaded(true);
+            }
+          });
+        } else {
+          // No valid start, just show destination
+          setRouteLoaded(true);
+        }
 
         googleMapInstance.current = map;
       } catch (error) {
         console.error('Error initializing Google Maps:', error);
+        setRouteLoaded(true);
       }
     };
 
@@ -300,14 +380,25 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
       directionsService.current = null;
       directionsRenderer.current = null;
     };
-  }, [mapType, useCurrentLocation, currentLocation, origin, destination]);
+  }, [mapType, useCurrentLocation, currentLocation, origin, destination, hasValidDestination]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
 
-  const hasStartForUi = (useCurrentLocation && currentLocation) || origin;
-  const hasDestForUi = destination;
+  const hasStartForUi = (useCurrentLocation && currentLocation) || (origin && hasValidOrigin);
+  const hasDestForUi = destination && hasValidDestination;
+
+  // Show error state if destination is invalid
+  if (!hasValidDestination) {
+    return (
+      <div className={`relative bg-gray-100 dark:bg-gray-800 rounded-lg p-6 text-center ${className}`}>
+        <Navigation className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Map unavailable</p>
+        <p className="text-xs text-gray-500">Destination coordinates not set for this delivery</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50' : ''} ${className}`}>
