@@ -24,11 +24,12 @@ interface DriverDeliveryMapProps {
   origin: { lat: number; lng: number; address?: string };
   destination: { lat: number; lng: number; address?: string };
   className?: string;
+  showNavigateButton?: boolean;
 }
 
 type MapType = 'osm' | 'mapbox' | 'google';
 
-export default function DriverDeliveryMap({ origin, destination, className = '' }: DriverDeliveryMapProps) {
+export default function DriverDeliveryMap({ origin, destination, className = '', showNavigateButton = true }: DriverDeliveryMapProps) {
   const [mapType, setMapType] = useState<MapType>('osm'); // Default to OSM for reliability
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [distance, setDistance] = useState<string>('');
@@ -386,6 +387,36 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
     setIsFullscreen(!isFullscreen);
   };
 
+  // Open navigation in external app (Google Maps, Apple Maps, Waze, etc.)
+  const openExternalNavigation = (app: 'google' | 'waze' | 'apple' | 'default') => {
+    const destLat = destination.lat;
+    const destLng = destination.lng;
+    const originLat = currentLocation?.lat || origin.lat;
+    const originLng = currentLocation?.lng || origin.lng;
+    
+    let url = '';
+    
+    switch (app) {
+      case 'google':
+        // Google Maps with directions from current location
+        url = `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}&travelmode=driving`;
+        break;
+      case 'waze':
+        // Waze navigation
+        url = `https://waze.com/ul?ll=${destLat},${destLng}&navigate=yes`;
+        break;
+      case 'apple':
+        // Apple Maps (works on iOS)
+        url = `maps://maps.apple.com/?daddr=${destLat},${destLng}&dirflg=d`;
+        break;
+      default:
+        // Generic geo URI (opens default map app on mobile)
+        url = `geo:${destLat},${destLng}?q=${destLat},${destLng}`;
+    }
+    
+    window.open(url, '_blank');
+  };
+
   const hasStartForUi = (useCurrentLocation && currentLocation) || (origin && hasValidOrigin);
   const hasDestForUi = destination && hasValidDestination;
 
@@ -476,29 +507,55 @@ export default function DriverDeliveryMap({ origin, destination, className = '' 
       {/* Route Info Card - Mobile Optimized */}
       {routeLoaded && (distance || duration) && !isFullscreen && (
         <div className="absolute bottom-2 left-2 right-2 z-[1000] bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg">
-          <div className="flex items-center justify-between gap-2">
-            {useCurrentLocation && (
-              <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full whitespace-nowrap">
-                📍 GPS
-              </span>
-            )}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {useCurrentLocation && (
+                <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full whitespace-nowrap">
+                  📍 GPS
+                </span>
+              )}
+              
+              {distance && (
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-gray-500" />
+                  <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{distance}</span>
+                </div>
+              )}
+              
+              {duration && (
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{duration}</span>
+                </div>
+              )}
+            </div>
             
-            {distance && (
-              <div className="flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-gray-500" />
-                <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{distance}</span>
-              </div>
-            )}
-            
-            {duration && (
-              <div className="flex items-center gap-1">
-                <svg className="w-3 h-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{duration}</span>
-              </div>
+            {/* Navigate Button */}
+            {showNavigateButton && (
+              <button
+                onClick={() => openExternalNavigation('google')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-emerald-700 transition-colors"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                <span>Navigate</span>
+              </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Navigation Button when no route loaded but destination valid */}
+      {showNavigateButton && !routeLoaded && hasValidDestination && !isFullscreen && (
+        <div className="absolute bottom-2 left-2 right-2 z-[1000]">
+          <button
+            onClick={() => openExternalNavigation('google')}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors shadow-lg"
+          >
+            <Navigation className="w-4 h-4" />
+            <span>Start Navigation to Customer</span>
+          </button>
         </div>
       )}
 

@@ -399,6 +399,7 @@ export default function DeliveryDetailsPage() {
             address: delivery.delivery_address || delivery.location
           }}
           className="rounded-2xl overflow-hidden border border-gray-100"
+          showNavigateButton={true}
         />
       ) : (
         <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 text-center">
@@ -412,6 +413,74 @@ export default function DeliveryDetailsPage() {
           </button>
         </div>
       )}
+
+      {/* Quick Navigation Actions */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Navigation</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => {
+              if (delivery.delivery_latitude && delivery.delivery_longitude) {
+                const origin = currentPosition 
+                  ? `${currentPosition.latitude},${currentPosition.longitude}` 
+                  : '';
+                const url = origin 
+                  ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${delivery.delivery_latitude},${delivery.delivery_longitude}&travelmode=driving`
+                  : `https://www.google.com/maps/dir/?api=1&destination=${delivery.delivery_latitude},${delivery.delivery_longitude}&travelmode=driving`;
+                window.open(url, '_blank');
+              } else {
+                openNavigation();
+              }
+            }}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            Google Maps
+          </button>
+          <button
+            onClick={() => {
+              if (delivery.delivery_latitude && delivery.delivery_longitude) {
+                window.open(`https://waze.com/ul?ll=${delivery.delivery_latitude},${delivery.delivery_longitude}&navigate=yes`, '_blank');
+              }
+            }}
+            disabled={!delivery.delivery_latitude || !delivery.delivery_longitude}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            Waze
+          </button>
+          <button
+            onClick={() => {
+              if (delivery.customer_phone) {
+                window.open(`tel:${delivery.customer_phone}`, '_self');
+              }
+            }}
+            disabled={!delivery.customer_phone}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Phone className="w-4 h-4" />
+            Call Customer
+          </button>
+          <button
+            onClick={() => {
+              if (delivery.customer_phone) {
+                window.open(`sms:${delivery.customer_phone}`, '_self');
+              }
+            }}
+            disabled={!delivery.customer_phone}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            SMS
+          </button>
+        </div>
+      </div>
 
       {/* Customer Info */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
