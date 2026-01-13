@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
 
     // Template-based send using order data
     if (body.orderId && body.eventType) {
+      console.log('[SMS API] Received request:', { orderId: body.orderId, eventType: body.eventType });
       const supabase = await createClient();
       
       // Fetch order with customer details
@@ -77,11 +78,14 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (orderError || !order) {
+        console.error('[SMS API] Order not found:', orderError);
         return NextResponse.json(
           { error: 'Order not found', details: orderError?.message },
           { status: 404 }
         );
       }
+
+      console.log('[SMS API] Order fetched:', { orderId: order.id, hasCustomer: !!order.customer });
 
       // Handle Supabase relations - they come back as arrays
       const customerData = order.customer as unknown as { id: string; name: string; phone: string }[] | null;
@@ -90,7 +94,14 @@ export async function POST(request: NextRequest) {
       const customer = Array.isArray(customerData) ? customerData[0] : customerData;
       const driver = Array.isArray(driverData) ? driverData[0] : driverData;
 
+      console.log('[SMS API] Customer data:', { 
+        hasCustomer: !!customer, 
+        phone: customer?.phone,
+        name: customer?.name 
+      });
+
       if (!customer?.phone) {
+        console.error('[SMS API] No customer phone number');
         return NextResponse.json(
           { error: 'Customer phone number not found' },
           { status: 400 }
@@ -114,8 +125,20 @@ export async function POST(request: NextRequest) {
       const message = getSMSByEvent(body.eventType, templateData);
       const stats = getMessageStats(message);
 
+      console.log('[SMS API] Sending SMS:', { 
+        phone: customer.phone, 
+        messageLength: message.length,
+        preview: message.substring(0, 50) + '...'
+      });
+
       // Send SMS
       const result = await sendSMS(customer.phone, message);
+
+      console.log('[SMS API] SMS send result:', { 
+        success: result.success, 
+        uid: result.uid,
+        error: result.error 
+      });
 
       // Log SMS in database (optional, for tracking)
       try {

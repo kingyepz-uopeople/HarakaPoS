@@ -165,6 +165,7 @@ export default function OrdersPage() {
 
       // Send SMS notification - Order Confirmed
       if (data && data[0]) {
+        console.log('Sending SMS for order:', data[0].id);
         fetch('/api/sms/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -172,7 +173,10 @@ export default function OrdersPage() {
             orderId: data[0].id,
             eventType: 'order_confirmed'
           })
-        }).catch(err => console.error('SMS send failed:', err));
+        })
+        .then(res => res.json())
+        .then(result => console.log('SMS API response:', result))
+        .catch(err => console.error('SMS send failed:', err));
       }
 
       // Reset form and close modal

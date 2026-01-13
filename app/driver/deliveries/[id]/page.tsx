@@ -290,6 +290,7 @@ export default function DeliveryDetailsPage() {
       if (orderError) throw orderError;
 
       // Send SMS notification - Out for Delivery
+      console.log('Sending SMS for out for delivery:', delivery.id);
       fetch('/api/sms/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -297,7 +298,10 @@ export default function DeliveryDetailsPage() {
           orderId: delivery.id,
           eventType: 'out_for_delivery'
         })
-      }).catch(err => console.error('SMS send failed:', err));
+      })
+      .then(res => res.json())
+      .then(result => console.log('SMS API response:', result))
+      .catch(err => console.error('SMS send failed:', err));
 
       // Keep user on this page so GPS tracking can begin immediately.
       // Previously we redirected which prevented initial location broadcasts.
@@ -352,6 +356,7 @@ export default function DeliveryDetailsPage() {
       if (orderError) throw orderError;
 
       // Send SMS notification - Payment Received
+      console.log('Sending SMS for payment received:', delivery.id);
       fetch('/api/sms/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -359,7 +364,10 @@ export default function DeliveryDetailsPage() {
           orderId: delivery.id,
           eventType: 'payment_received'
         })
-      }).catch(err => console.error('SMS send failed:', err));
+      })
+      .then(res => res.json())
+      .then(result => console.log('SMS API response:', result))
+      .catch(err => console.error('SMS send failed:', err));
 
       // 4. Update barcode status to delivered (if present)
       try {
