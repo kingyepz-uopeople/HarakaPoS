@@ -437,26 +437,28 @@ export default function DeliveryDetailsPage() {
   }
 
   return (
-    <div className={`p-4 space-y-4 ${navMode ? 'pb-4' : 'pb-32'}`}>
+    <div className={`${navMode ? 'min-h-screen flex flex-col' : 'p-4 space-y-4 pb-32'}`}>
       {/* Navigation Mode Header */}
       {navMode && (
-        <div className="bg-gradient-to-r from-blue-600 to-emerald-600 rounded-2xl p-4 text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-full">
-                <Navigation className="w-6 h-6" />
+        <div className="p-4 pb-0">
+          <div className="bg-gradient-to-r from-blue-600 to-emerald-600 rounded-2xl p-4 text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-full">
+                  <Navigation className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-lg">Navigation Mode</h2>
+                  <p className="text-white/80 text-sm">Driving to {delivery.customer_name}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-bold text-lg">Navigation Mode</h2>
-                <p className="text-white/80 text-sm">Driving to {delivery.customer_name}</p>
-              </div>
+              <button
+                onClick={() => setNavMode(false)}
+                className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+              >
+                Exit
+              </button>
             </div>
-            <button
-              onClick={() => setNavMode(false)}
-              className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
-            >
-              Exit
-            </button>
           </div>
         </div>
       )}
@@ -474,7 +476,8 @@ export default function DeliveryDetailsPage() {
         </div>
       )}
 
-      {/* Status Badge */}
+      {/* Status Badge - Hidden in nav mode */}
+      {!navMode && (
       <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <span className={`inline-block px-3 py-1.5 rounded-full text-sm font-medium border ${getStatusColor(delivery.delivery_status)}`}>
@@ -520,8 +523,10 @@ export default function DeliveryDetailsPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* Live Embedded Map with Real-time Driver Position */}
+      <div className={navMode ? 'flex-1 p-4 pt-2' : ''}>
       {(() => {
         // Use delivery coordinates or geocoded coordinates
         const destLat = delivery.delivery_latitude || geocodedCoords?.lat;
@@ -530,16 +535,18 @@ export default function DeliveryDetailsPage() {
         
         if (isGeocoding) {
           return (
-            <div className="bg-gray-50 rounded-2xl border border-gray-200 p-6 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-3"></div>
-              <p className="text-sm text-gray-600">Finding location on map...</p>
+            <div className={`bg-gray-50 rounded-2xl border border-gray-200 p-6 text-center ${navMode ? 'h-full flex items-center justify-center' : ''}`}>
+              <div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-3"></div>
+                <p className="text-sm text-gray-600">Finding location on map...</p>
+              </div>
             </div>
           );
         }
         
         if (hasCoordinates) {
           return (
-            <div className={navMode ? 'h-[60vh]' : ''}>
+            <div className={navMode ? 'h-full' : ''}>
               <DriverLiveMap
                 destination={{
                   lat: destLat,
@@ -563,10 +570,10 @@ export default function DeliveryDetailsPage() {
         
         // Fallback when no coordinates available - show map centered on driver location or Kenya
         return (
-          <div className={`bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden ${navMode ? 'h-[60vh]' : ''}`}>
+          <div className={`bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden ${navMode ? 'h-full flex flex-col' : ''}`}>
             {/* Show map centered on driver's current location if available */}
             {currentPosition ? (
-              <div className={navMode ? 'h-full' : 'h-64'}>
+              <div className={`relative ${navMode ? 'flex-1' : 'h-64'}`}>
                 <DriverLiveMap
                   destination={{
                     lat: currentPosition.latitude,
@@ -587,7 +594,7 @@ export default function DeliveryDetailsPage() {
                 </div>
               </div>
             ) : (
-              <div className="p-6 text-center">
+              <div className={`p-6 text-center ${navMode ? 'flex-1 flex flex-col items-center justify-center' : ''}`}>
                 <MapPin className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                 <p className="text-sm text-gray-600 mb-2 font-medium">Location not found on map</p>
                 <p className="text-xs text-gray-500 mb-4 max-w-xs mx-auto">{delivery.delivery_address || delivery.location}</p>
@@ -620,51 +627,58 @@ export default function DeliveryDetailsPage() {
           </div>
         );
       })()}
+      </div>
 
-      {/* Quick Actions in Nav Mode - Floating Bar */}
+      {/* Quick Actions in Nav Mode - Fixed Bottom Bar */}
       {navMode && (
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <button
-              onClick={() => {
-                if (delivery.customer_phone) {
-                  window.open(`tel:${delivery.customer_phone}`, '_self');
-                }
-              }}
-              disabled={!delivery.customer_phone}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50"
-            >
-              <Phone className="w-5 h-5" />
-              <span>Call</span>
-            </button>
-            <button
-              onClick={() => {
-                const destLat = delivery.delivery_latitude || geocodedCoords?.lat;
-                const destLng = delivery.delivery_longitude || geocodedCoords?.lng;
-                if (destLat && destLng) {
-                  const origin = currentPosition 
-                    ? `${currentPosition.latitude},${currentPosition.longitude}` 
-                    : '';
-                  const url = origin 
-                    ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destLat},${destLng}&travelmode=driving`
-                    : `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
-                  window.open(url, '_blank');
-                }
-              }}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              <Navigation className="w-5 h-5" />
-              <span>Google Maps</span>
-            </button>
-            {hasArrived && (
+        <div className="p-4 pt-0">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-3">
+            <div className="flex items-center justify-between gap-2">
               <button
-                onClick={() => setShowPaymentModal(true)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors"
+                onClick={() => {
+                  if (delivery.customer_phone) {
+                    window.open(`tel:${delivery.customer_phone}`, '_self');
+                  }
+                }}
+                disabled={!delivery.customer_phone}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50"
               >
-                <CheckCircle2 className="w-5 h-5" />
-                <span>Complete</span>
+                <Phone className="w-5 h-5" />
+                <span>Call</span>
               </button>
-            )}
+              <button
+                onClick={() => {
+                  const destLat = delivery.delivery_latitude || geocodedCoords?.lat;
+                  const destLng = delivery.delivery_longitude || geocodedCoords?.lng;
+                  if (destLat && destLng) {
+                    const origin = currentPosition 
+                      ? `${currentPosition.latitude},${currentPosition.longitude}` 
+                      : '';
+                    const url = origin 
+                      ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destLat},${destLng}&travelmode=driving`
+                      : `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
+                    window.open(url, '_blank');
+                  } else {
+                    // Fallback to address search
+                    const address = delivery.delivery_address || delivery.location;
+                    window.open(`https://www.google.com/maps/search/${encodeURIComponent(address)}`, '_blank');
+                  }
+                }}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                <Navigation className="w-5 h-5" />
+                <span>Google Maps</span>
+              </button>
+              {hasArrived && (
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors"
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span>Complete</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
