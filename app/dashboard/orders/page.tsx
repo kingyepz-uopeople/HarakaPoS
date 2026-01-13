@@ -163,6 +163,18 @@ export default function OrdersPage() {
         return;
       }
 
+      // Send SMS notification - Order Confirmed
+      if (data && data[0]) {
+        fetch('/api/sms/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: data[0].id,
+            eventType: 'order_confirmed'
+          })
+        }).catch(err => console.error('SMS send failed:', err));
+      }
+
       // Reset form and close modal
       setFormData({
         customer_id: "",
