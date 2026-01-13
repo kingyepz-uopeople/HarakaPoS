@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
@@ -33,6 +33,9 @@ const BarcodeDisplay = dynamic(
 export default function DeliveryDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const startNavMode = searchParams.get('startNav') === 'true';
+  
   const [delivery, setDelivery] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -43,13 +46,15 @@ export default function DeliveryDetailsPage() {
   const [loadingBarcode, setLoadingBarcode] = useState<boolean>(false);
   const [geocodedCoords, setGeocodedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [navMode, setNavMode] = useState(startNavMode);
   const supabase = createClient();
 
-  // Real-time location tracking
+  // Real-time location tracking - enabled in nav mode or when out for delivery
   const isOutForDelivery = delivery?.delivery_status === "Out for Delivery";
+  const shouldTrack = isOutForDelivery || navMode;
   const { currentPosition, isTracking, error: trackingError, hasArrived } = useDriverLocationTracking({
     orderId: params.id as string,
-    enabled: isOutForDelivery,
+    enabled: shouldTrack,
     updateInterval: 5000, // Update every 5 seconds
     geofenceRadius: 50, // 50 meters
     onArrival: async () => {
@@ -70,6 +75,22 @@ export default function DeliveryDetailsPage() {
     },
   });
 
+  // Auto-start delivery when navigating with startNav=true
+  useEffect(() => {
+    if (startNavMode && delivery && delivery.delivery_status === 'Pending') {
+      // Auto-set to Out for Delivery
+      supabase
+        .from('orders')
+        .update({ delivery_status: 'Out for Delivery' })
+        .eq('id', params.id as string)
+        .then(({ error }) => {
+          if (!error) {
+            setDelivery({ ...delivery, delivery_status: 'Out for Delivery' });
+          }
+        });
+    }
+  }, [startNavMode, delivery?.id, delivery?.delivery_status]);
+
   useEffect(() => {
     if (params.id) {
       loadDelivery(params.id as string);
@@ -88,20 +109,60 @@ export default function DeliveryDetailsPage() {
       
       setIsGeocoding(true);
       try {
-        // Use Nominatim (OpenStreetMap) for free geocoding
-        const encodedAddress = encodeURIComponent(address + ", Kenya");
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`,
+        // Try multiple geocoding strategies for better results
+        let coords = null;
+        
+        // Strategy 1: Try full address with Kenya
+        const fullAddress = address + ", Kenya";
+        let response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}&limit=1&countrycodes=ke`,
           { headers: { 'User-Agent': 'HarakaPoS/1.0' } }
         );
-        const data = await response.json();
+        let data = await response.json();
         
         if (data && data.length > 0) {
-          const { lat, lon } = data[0];
-          const coords = { lat: parseFloat(lat), lng: parseFloat(lon) };
+          coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        }
+        
+        // Strategy 2: Try just the town/county part
+        if (!coords) {
+          // Extract town name from address (usually after first comma or the main part)
+          const parts = address.split(',').map((p: string) => p.trim());
+          for (const part of parts) {
+            if (part.toLowerCase().includes('county') || part.toLowerCase().includes('town')) {
+              response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(part + ", Kenya")}&limit=1&countrycodes=ke`,
+                { headers: { 'User-Agent': 'HarakaPoS/1.0' } }
+              );
+              data = await response.json();
+              if (data && data.length > 0) {
+                coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                break;
+              }
+            }
+          }
+        }
+        
+        // Strategy 3: Try Google Geocoding API as fallback
+        if (!coords && process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY) {
+          try {
+            response = await fetch(
+              `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address + ", Kenya")}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`
+            );
+            data = await response.json();
+            if (data.results && data.results.length > 0) {
+              const loc = data.results[0].geometry.location;
+              coords = { lat: loc.lat, lng: loc.lng };
+            }
+          } catch (e) {
+            console.log('Google geocoding fallback failed:', e);
+          }
+        }
+        
+        if (coords) {
           setGeocodedCoords(coords);
           
-          // Optionally save the geocoded coordinates to the database for future use
+          // Save the geocoded coordinates to the database for future use
           try {
             await supabase
               .from('orders')
@@ -376,17 +437,42 @@ export default function DeliveryDetailsPage() {
   }
 
   return (
-    <div className="p-4 space-y-4 pb-32">
-      {/* Header */}
-      <div className="flex items-center space-x-3">
-        <button
-          onClick={() => router.push("/driver/deliveries")}
-          className="p-2 hover:bg-white rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-6 h-6 text-gray-700" />
-        </button>
-        <h1 className="text-xl font-bold text-gray-900">Delivery Details</h1>
-      </div>
+    <div className={`p-4 space-y-4 ${navMode ? 'pb-4' : 'pb-32'}`}>
+      {/* Navigation Mode Header */}
+      {navMode && (
+        <div className="bg-gradient-to-r from-blue-600 to-emerald-600 rounded-2xl p-4 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-full">
+                <Navigation className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Navigation Mode</h2>
+                <p className="text-white/80 text-sm">Driving to {delivery.customer_name}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setNavMode(false)}
+              className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+            >
+              Exit
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header - Hidden in nav mode */}
+      {!navMode && (
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => router.push("/driver/deliveries")}
+            className="p-2 hover:bg-white rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-700" />
+          </button>
+          <h1 className="text-xl font-bold text-gray-900">Delivery Details</h1>
+        </div>
+      )}
 
       {/* Status Badge */}
       <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
@@ -396,7 +482,7 @@ export default function DeliveryDetailsPage() {
           </span>
           
           {/* GPS Tracking Indicator */}
-          {isOutForDelivery && (
+          {shouldTrack && (
             <div className="flex items-center gap-2">
               {isTracking ? (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
@@ -453,47 +539,148 @@ export default function DeliveryDetailsPage() {
         
         if (hasCoordinates) {
           return (
-            <DriverLiveMap
-              destination={{
-                lat: destLat,
-                lng: destLng,
-                address: delivery.delivery_address || delivery.location
-              }}
-              driverPosition={
-                currentPosition
-                  ? { lat: currentPosition.latitude, lng: currentPosition.longitude }
-                  : null
-              }
-              className="rounded-2xl overflow-hidden border border-gray-100"
-              showNavigateButton={true}
-              onRouteSummary={({ distanceKm, durationText }) => {
-                console.log(`Route: ${distanceKm.toFixed(1)} km, ETA: ${durationText}`);
-              }}
-            />
+            <div className={navMode ? 'h-[60vh]' : ''}>
+              <DriverLiveMap
+                destination={{
+                  lat: destLat,
+                  lng: destLng,
+                  address: delivery.delivery_address || delivery.location
+                }}
+                driverPosition={
+                  currentPosition
+                    ? { lat: currentPosition.latitude, lng: currentPosition.longitude }
+                    : null
+                }
+                className={`rounded-2xl overflow-hidden border border-gray-100 ${navMode ? 'h-full' : ''}`}
+                showNavigateButton={!navMode}
+                onRouteSummary={({ distanceKm, durationText }) => {
+                  console.log(`Route: ${distanceKm.toFixed(1)} km, ETA: ${durationText}`);
+                }}
+              />
+            </div>
           );
         }
         
-        // Fallback when no coordinates available
+        // Fallback when no coordinates available - show map centered on driver location or Kenya
         return (
-          <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 text-center">
-            <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600 mb-2">Could not find exact location on map</p>
-            <p className="text-xs text-gray-500 mb-3">{delivery.delivery_address || delivery.location}</p>
-            <button
-              onClick={openNavigation}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
-            >
-              <Navigation className="w-4 h-4" />
-              Open in Google Maps
-            </button>
+          <div className={`bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden ${navMode ? 'h-[60vh]' : ''}`}>
+            {/* Show map centered on driver's current location if available */}
+            {currentPosition ? (
+              <div className={navMode ? 'h-full' : 'h-64'}>
+                <DriverLiveMap
+                  destination={{
+                    lat: currentPosition.latitude,
+                    lng: currentPosition.longitude,
+                    address: delivery.delivery_address || delivery.location
+                  }}
+                  driverPosition={{ lat: currentPosition.latitude, lng: currentPosition.longitude }}
+                  className="h-full"
+                  showNavigateButton={false}
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                  <p className="text-white text-sm font-medium text-center">
+                    📍 Address not found - showing your location
+                  </p>
+                  <p className="text-white/80 text-xs text-center mt-1">
+                    {delivery.delivery_address || delivery.location}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 text-center">
+                <MapPin className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                <p className="text-sm text-gray-600 mb-2 font-medium">Location not found on map</p>
+                <p className="text-xs text-gray-500 mb-4 max-w-xs mx-auto">{delivery.delivery_address || delivery.location}</p>
+              </div>
+            )}
+            
+            {/* Action buttons */}
+            <div className="p-4 bg-white border-t border-gray-200">
+              <div className="flex gap-2">
+                <button
+                  onClick={openNavigation}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <Navigation className="w-4 h-4" />
+                  Open in Google Maps
+                </button>
+                <button
+                  onClick={() => {
+                    // Open Google Maps search with the address
+                    const address = delivery.delivery_address || delivery.location;
+                    window.open(`https://www.google.com/maps/search/${encodeURIComponent(address)}`, '_blank');
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Search Address
+                </button>
+              </div>
+            </div>
           </div>
         );
       })()}
 
-      {/* Quick Navigation Actions */}
+      {/* Quick Actions in Nav Mode - Floating Bar */}
+      {navMode && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={() => {
+                if (delivery.customer_phone) {
+                  window.open(`tel:${delivery.customer_phone}`, '_self');
+                }
+              }}
+              disabled={!delivery.customer_phone}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50"
+            >
+              <Phone className="w-5 h-5" />
+              <span>Call</span>
+            </button>
+            <button
+              onClick={() => {
+                const destLat = delivery.delivery_latitude || geocodedCoords?.lat;
+                const destLng = delivery.delivery_longitude || geocodedCoords?.lng;
+                if (destLat && destLng) {
+                  const origin = currentPosition 
+                    ? `${currentPosition.latitude},${currentPosition.longitude}` 
+                    : '';
+                  const url = origin 
+                    ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destLat},${destLng}&travelmode=driving`
+                    : `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
+                  window.open(url, '_blank');
+                }
+              }}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              <Navigation className="w-5 h-5" />
+              <span>Google Maps</span>
+            </button>
+            {hasArrived && (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                <span>Complete</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Navigation Actions - Hidden in nav mode */}
+      {!navMode && (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
         <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Navigation</h3>
         <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setNavMode(true)}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-emerald-600 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-emerald-700 transition-colors col-span-2"
+          >
+            <Navigation className="w-4 h-4" />
+            Start In-App Navigation
+          </button>
           <button
             onClick={() => {
               const destLat = delivery.delivery_latitude || geocodedCoords?.lat;
@@ -566,8 +753,10 @@ export default function DeliveryDetailsPage() {
           </button>
         </div>
       </div>
+      )}
 
-      {/* Customer Info */}
+      {/* Customer Info - Hidden in nav mode */}
+      {!navMode && (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div className="p-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">Customer Information</h2>
@@ -608,8 +797,10 @@ export default function DeliveryDetailsPage() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Order Details */}
+      {/* Order Details - Hidden in nav mode */}
+      {!navMode && (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div className="p-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">Order Details</h2>
@@ -650,19 +841,33 @@ export default function DeliveryDetailsPage() {
           <div className="mt-4">
             <p className="text-sm text-gray-500 mb-2">Delivery Barcode</p>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex flex-col gap-3">
                 {loadingBarcode ? (
-                  <span className="text-sm text-gray-500">Generating barcode...</span>
+                  <span className="text-sm text-gray-500">Generating codes...</span>
                 ) : orderBarcode ? (
-                  <div className="w-full overflow-x-auto">
-                    <div className="bg-white rounded p-2 inline-block min-w-0 max-w-full">
-                      <BarcodeDisplay 
-                        value={orderBarcode} 
-                        height={50} 
-                        width={1.5} 
-                        fontSize={12} 
-                        className="max-w-full"
-                      />
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    {/* Barcode */}
+                    <div className="flex-1 w-full overflow-x-auto">
+                      <div className="bg-white rounded p-2 inline-block min-w-0 max-w-full">
+                        <BarcodeDisplay 
+                          value={orderBarcode} 
+                          height={50} 
+                          width={1.5} 
+                          fontSize={12} 
+                          className="max-w-full"
+                        />
+                      </div>
+                    </div>
+                    {/* QR Code */}
+                    <div className="shrink-0">
+                      <div className="bg-white rounded p-2 border border-gray-200">
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(orderBarcode)}`}
+                          alt="QR Code"
+                          className="w-24 h-24"
+                        />
+                        <p className="text-xs text-gray-500 text-center mt-1">QR Code</p>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -679,8 +884,10 @@ export default function DeliveryDetailsPage() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Actions */}
+      {/* Actions - Hidden in nav mode */}
+      {!navMode && (
       <div className="space-y-3">
         {/* Start Delivery Button */}
         {(delivery.delivery_status === "Pending" || delivery.delivery_status === "Scheduled") && (
@@ -748,6 +955,7 @@ export default function DeliveryDetailsPage() {
           </>
         )}
       </div>
+      )}
 
       {/* Payment Modal */}
       {showPaymentModal && (

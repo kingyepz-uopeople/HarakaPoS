@@ -455,17 +455,13 @@ export default function DeliveriesPage() {
                       <span>Scan</span>
                     </Link>
                   )}
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      openNavigation(delivery.location, delivery);
-                    }}
+                  <Link
+                    href={`/driver/deliveries/${delivery.id}?startNav=true`}
                     className={`bg-emerald-50 text-emerald-700 hover:bg-emerald-100 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${delivery.barcode ? '' : 'col-span-1'}`}
                   >
                     <Navigation className="w-4 h-4" />
                     <span>Navigate</span>
-                  </button>
+                  </Link>
                   <Link
                     href={`/driver/deliveries/${delivery.id}`}
                     className={`bg-gray-100 text-gray-700 hover:bg-gray-200 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${delivery.barcode ? '' : 'col-span-1'}`}
