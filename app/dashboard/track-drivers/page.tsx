@@ -173,7 +173,11 @@ export default function AdminTrackDriverPage() {
       )
       .subscribe();
 
+    // Polling fallback every 10 seconds in case realtime connection drops
+    const pollInterval = setInterval(loadLatestLocation, 10000);
+
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [selectedOrder?.id]);

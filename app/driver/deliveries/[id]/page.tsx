@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
 import PDAPaymentFlow from "@/components/PDAPaymentFlow";
-import DriverDeliveryMap from "@/components/DriverDeliveryMap";
+import DriverLiveMap from "@/components/DriverLiveMap";
 import { useDriverLocationTracking } from "@/lib/hooks/useDriverLocationTracking";
 import {
   MapPin,
@@ -435,7 +435,7 @@ export default function DeliveryDetailsPage() {
         </div>
       </div>
 
-      {/* Embedded Map - All 3 Map Providers! */}
+      {/* Live Embedded Map with Real-time Driver Position */}
       {(() => {
         // Use delivery coordinates or geocoded coordinates
         const destLat = delivery.delivery_latitude || geocodedCoords?.lat;
@@ -453,19 +453,22 @@ export default function DeliveryDetailsPage() {
         
         if (hasCoordinates) {
           return (
-            <DriverDeliveryMap
-              origin={{
-                lat: currentPosition?.latitude || -1.286389,
-                lng: currentPosition?.longitude || 36.817223,
-                address: "Your Location"
-              }}
+            <DriverLiveMap
               destination={{
                 lat: destLat,
                 lng: destLng,
                 address: delivery.delivery_address || delivery.location
               }}
+              driverPosition={
+                currentPosition
+                  ? { lat: currentPosition.latitude, lng: currentPosition.longitude }
+                  : null
+              }
               className="rounded-2xl overflow-hidden border border-gray-100"
               showNavigateButton={true}
+              onRouteSummary={({ distanceKm, durationText }) => {
+                console.log(`Route: ${distanceKm.toFixed(1)} km, ETA: ${durationText}`);
+              }}
             />
           );
         }
