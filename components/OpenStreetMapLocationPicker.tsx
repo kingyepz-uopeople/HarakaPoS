@@ -2,8 +2,28 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { MapPin, Navigation, Search, Link as LinkIcon, Map } from 'lucide-react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+
+// Lazy load Mapbox to avoid SSR issues
+let mapboxgl: typeof import('mapbox-gl') | null = null;
+let mapboxCssLoaded = false;
+
+const loadMapbox = async () => {
+  if (typeof window === 'undefined') return null;
+  if (mapboxgl) return mapboxgl;
+  
+  // Load CSS via link element
+  if (!mapboxCssLoaded) {
+    const mapboxCss = document.createElement('link');
+    mapboxCss.rel = 'stylesheet';
+    mapboxCss.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
+    document.head.appendChild(mapboxCss);
+    mapboxCssLoaded = true;
+  }
+  
+  const mb = await import('mapbox-gl');
+  mapboxgl = mb.default as any;
+  return mapboxgl;
+};
 
 interface LocationData {
   address: string;
@@ -277,12 +297,17 @@ export default function OpenStreetMapLocationPicker({
   useEffect(() => {
     if (!showMap || mapType !== 'mapbox' || !mapboxMapRef.current || mapboxMap) return;
 
-    const initMapboxMap = () => {
+    let cancelled = false;
+
+    const initMapboxMap = async () => {
+      const mb = await loadMapbox();
+      if (!mb || cancelled || !mapboxMapRef.current) return;
+
       // Set Mapbox access token
-      mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+      (mb as any).accessToken = MAPBOX_ACCESS_TOKEN;
 
       // Create map
-      const map = new mapboxgl.Map({
+      const map = new (mb as any).Map({
         container: mapboxMapRef.current!,
         style: 'mapbox://styles/mapbox/streets-v12',
         center: [mapCenter[1], mapCenter[0]], // Mapbox uses [lng, lat]
@@ -290,7 +315,7 @@ export default function OpenStreetMapLocationPicker({
       });
 
       // Create draggable marker
-      const marker = new mapboxgl.Marker({ draggable: true })
+      const marker = new (mb as any).Marker({ draggable: true })
         .setLngLat([mapCenter[1], mapCenter[0]])
         .addTo(map);
 
@@ -334,6 +359,10 @@ export default function OpenStreetMapLocationPicker({
     };
 
     initMapboxMap();
+
+    return () => {
+      cancelled = true;
+    };
   }, [showMap, mapType]);
 
   // Initialize OpenStreetMap when shown

@@ -2,20 +2,64 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Maximize2, Minimize2, Navigation, MapPin } from 'lucide-react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-routing-machine';
-import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 
-// Fix Leaflet default marker icon issue
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+// Lazy load Leaflet to avoid SSR issues
+let L: typeof import('leaflet') | null = null;
+let mapboxgl: typeof import('mapbox-gl') | null = null;
+let leafletCssLoaded = false;
+let mapboxCssLoaded = false;
+
+const loadLeaflet = async () => {
+  if (typeof window === 'undefined') return null;
+  if (L) return L;
+  
+  // Load CSS via link elements
+  if (!leafletCssLoaded) {
+    const leafletCss = document.createElement('link');
+    leafletCss.rel = 'stylesheet';
+    leafletCss.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(leafletCss);
+    
+    const routingCss = document.createElement('link');
+    routingCss.rel = 'stylesheet';
+    routingCss.href = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css';
+    document.head.appendChild(routingCss);
+    
+    leafletCssLoaded = true;
+  }
+  
+  const leaflet = await import('leaflet');
+  await import('leaflet-routing-machine');
+  
+  // Fix Leaflet default marker icon issue
+  delete (leaflet.Icon.Default.prototype as any)._getIconUrl;
+  leaflet.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  });
+  
+  L = leaflet;
+  return leaflet;
+};
+
+const loadMapbox = async () => {
+  if (typeof window === 'undefined') return null;
+  if (mapboxgl) return mapboxgl;
+  
+  // Load CSS via link element
+  if (!mapboxCssLoaded) {
+    const mapboxCss = document.createElement('link');
+    mapboxCss.rel = 'stylesheet';
+    mapboxCss.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
+    document.head.appendChild(mapboxCss);
+    mapboxCssLoaded = true;
+  }
+  
+  const mb = await import('mapbox-gl');
+  mapboxgl = mb.default as any;
+  return mapboxgl;
+};
 
 const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1Ijoia2luZ3llcHoiLCJhIjoiY202YmliMHF1MGM4NTJqcjBpZ2RsZWE1eiJ9.nvuCl-_Dw6Jnj1Ls_KcOAA';
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '';
@@ -51,12 +95,14 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
 
   // OSM/Leaflet refs
   const osmMapRef = useRef<HTMLDivElement>(null);
-  const osmMapInstance = useRef<L.Map | null>(null);
+  const osmMapInstance = useRef<any>(null);
   const routingControl = useRef<any>(null);
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   // Mapbox refs
   const mapboxMapRef = useRef<HTMLDivElement>(null);
-  const mapboxMapInstance = useRef<mapboxgl.Map | null>(null);
+  const mapboxMapInstance = useRef<any>(null);
+  const [mapboxLoaded, setMapboxLoaded] = useState(false);
 
   // Google Maps refs
   const googleMapRef = useRef<HTMLDivElement>(null);
@@ -88,23 +134,34 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
     if (mapType !== 'osm' || !osmMapRef.current || osmMapInstance.current) return;
     if (!hasValidDestination) return;
 
-    const initialCenter: [number, number] = [destination.lat, destination.lng];
+    let cancelled = false;
 
-    const map = L.map(osmMapRef.current).setView(initialCenter, 13);
+    const initOSM = async () => {
+      const leaflet = await loadLeaflet();
+      if (!leaflet || cancelled || !osmMapRef.current) return;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map);
+      setLeafletLoaded(true);
+      const initialCenter: [number, number] = [destination.lat, destination.lng];
 
-    osmMapInstance.current = map;
+      const map = leaflet.map(osmMapRef.current).setView(initialCenter, 13);
 
-    // Force map to recalculate size after mount
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
+      leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      osmMapInstance.current = map;
+
+      // Force map to recalculate size after mount
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
+    };
+
+    initOSM();
 
     return () => {
+      cancelled = true;
       if (osmMapInstance.current) {
         osmMapInstance.current.remove();
         osmMapInstance.current = null;
@@ -114,7 +171,7 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
 
   // Create OSM routing
   useEffect(() => {
-    if (mapType !== 'osm') return;
+    if (mapType !== 'osm' || !leafletLoaded || !L) return;
     const map = osmMapInstance.current;
     if (!map) return;
     if (!hasValidDestination) return;
@@ -124,8 +181,8 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
 
     if (!startValid) {
       // Just show destination marker without routing
-      L.marker([destination.lat, destination.lng], {
-        icon: L.icon({
+      L!.marker([destination.lat, destination.lng], {
+        icon: L!.icon({
           iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
           shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
           iconSize: [25, 41],
@@ -157,8 +214,8 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
       
       const control = L_routing.control({
         waypoints: [
-          L.latLng(start.lat, start.lng),
-          L.latLng(destination.lat, destination.lng)
+          L!.latLng(start.lat, start.lng),
+          L!.latLng(destination.lat, destination.lng)
         ],
         routeWhileDragging: false,
         addWaypoints: false,
@@ -167,9 +224,9 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
           styles: [{ color: '#10b981', weight: 6, opacity: 0.8 }]
         },
         createMarker: function(i: number, waypoint: any) {
-          const marker = L.marker(waypoint.latLng, {
+          const marker = L!.marker(waypoint.latLng, {
             draggable: false,
-            icon: L.icon({
+            icon: L!.icon({
               iconUrl: i === 0 
                 ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
                 : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -216,86 +273,97 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
         routingControl.current = null;
       }
     };
-  }, [mapType, useCurrentLocation, currentLocation, origin, destination, hasValidDestination]);
+  }, [mapType, leafletLoaded, useCurrentLocation, currentLocation, origin, destination, hasValidDestination]);
 
   // Initialize Mapbox Map
   useEffect(() => {
     if (mapType !== 'mapbox' || !mapboxMapRef.current || mapboxMapInstance.current) return;
     if (!hasValidDestination) return;
 
-    mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+    let cancelled = false;
 
-    const start = (useCurrentLocation && currentLocation) ? currentLocation : origin;
-    const startValid = start && isValidCoord(start.lat, start.lng);
-    
-    const map = new mapboxgl.Map({
-      container: mapboxMapRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [destination.lng, destination.lat],
-      zoom: 12,
-    });
+    const initMapbox = async () => {
+      const mb = await loadMapbox();
+      if (!mb || cancelled || !mapboxMapRef.current) return;
 
-    // Add destination marker
-    new mapboxgl.Marker({ color: '#ef4444' })
-      .setLngLat([destination.lng, destination.lat])
-      .addTo(map);
+      setMapboxLoaded(true);
+      (mb as any).accessToken = MAPBOX_ACCESS_TOKEN;
 
-    // Add start marker if valid
-    if (startValid) {
-      new mapboxgl.Marker({ color: '#10b981' })
-        .setLngLat([start.lng, start.lat])
+      const start = (useCurrentLocation && currentLocation) ? currentLocation : origin;
+      const startValid = start && isValidCoord(start.lat, start.lng);
+      
+      const map = new (mb as any).Map({
+        container: mapboxMapRef.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [destination.lng, destination.lat],
+        zoom: 12,
+      });
+
+      // Add destination marker
+      new (mb as any).Marker({ color: '#ef4444' })
+        .setLngLat([destination.lng, destination.lat])
         .addTo(map);
 
-      // Get directions
-      fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${destination.lng},${destination.lat}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.routes && data.routes[0]) {
-            const route = data.routes[0];
-            setDistance(`${(route.distance / 1000).toFixed(1)} km`);
-            const minutes = Math.round(route.duration / 60);
-            setDuration(minutes > 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} min`);
-          setRouteLoaded(true);
+      // Add start marker if valid
+      if (startValid) {
+        new (mb as any).Marker({ color: '#10b981' })
+          .setLngLat([start.lng, start.lat])
+          .addTo(map);
 
-          map.on('load', () => {
-            map.addSource('route', {
-              type: 'geojson',
-              data: {
-                type: 'Feature',
-                properties: {},
-                geometry: route.geometry
-              }
-            });
+        // Get directions
+        fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${destination.lng},${destination.lat}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.routes && data.routes[0]) {
+              const route = data.routes[0];
+              setDistance(`${(route.distance / 1000).toFixed(1)} km`);
+              const minutes = Math.round(route.duration / 60);
+              setDuration(minutes > 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} min`);
+              setRouteLoaded(true);
 
-            map.addLayer({
-              id: 'route',
-              type: 'line',
-              source: 'route',
-              layout: {
-                'line-join': 'round',
-                'line-cap': 'round'
-              },
-              paint: {
-                'line-color': '#10b981',
-                'line-width': 6,
-                'line-opacity': 0.8
-              }
-            });
+              map.on('load', () => {
+                map.addSource('route', {
+                  type: 'geojson',
+                  data: {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: route.geometry
+                  }
+                });
+
+                map.addLayer({
+                  id: 'route',
+                  type: 'line',
+                  source: 'route',
+                  layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                  },
+                  paint: {
+                    'line-color': '#10b981',
+                    'line-width': 6,
+                    'line-opacity': 0.8
+                  }
+                });
+              });
+            }
+          })
+          .catch(err => {
+            console.error('Mapbox directions error:', err);
+            setRouteLoaded(true);
           });
-        }
-      })
-      .catch(err => {
-        console.error('Mapbox directions error:', err);
+      } else {
+        // No valid start point, just show destination
         setRouteLoaded(true);
-      });
-    } else {
-      // No valid start point, just show destination
-      setRouteLoaded(true);
-    }
+      }
 
-    mapboxMapInstance.current = map;
+      mapboxMapInstance.current = map;
+    };
+
+    initMapbox();
 
     return () => {
+      cancelled = true;
       if (mapboxMapInstance.current) {
         mapboxMapInstance.current.remove();
         mapboxMapInstance.current = null;

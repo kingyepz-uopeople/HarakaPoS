@@ -4,17 +4,38 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/utils/formatCurrency';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { Package, MapPin, Clock, User, Calendar, Navigation2, Radio } from 'lucide-react';
 
-// Fix Leaflet default marker icon
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+// Lazy load Leaflet to avoid SSR issues
+let L: typeof import('leaflet') | null = null;
+let cssLoaded = false;
+
+const loadLeaflet = async () => {
+  if (typeof window === 'undefined') return null;
+  if (L) return L;
+  
+  // Load CSS via link element
+  if (!cssLoaded) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+    cssLoaded = true;
+  }
+  
+  const leaflet = await import('leaflet');
+  
+  // Fix Leaflet default marker icon issue
+  delete (leaflet.Icon.Default.prototype as any)._getIconUrl;
+  leaflet.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  });
+  
+  L = leaflet;
+  return leaflet;
+};
 
 interface Order {
   id: string;
@@ -53,10 +74,11 @@ export default function TrackDeliveryPage() {
   const [distance, setDistance] = useState<string>('');
   
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
-  const driverMarker = useRef<L.Marker | null>(null);
-  const destinationMarker = useRef<L.Marker | null>(null);
-  const polyline = useRef<L.Polyline | null>(null);
+  const mapInstance = useRef<any>(null);
+  const driverMarker = useRef<any>(null);
+  const destinationMarker = useRef<any>(null);
+  const polyline = useRef<any>(null);
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
   
   const supabase = createClient();
 
@@ -171,36 +193,48 @@ export default function TrackDeliveryPage() {
   useEffect(() => {
     if (!mapRef.current || mapInstance.current || !order) return;
 
-    const map = L.map(mapRef.current).setView(
-      [order.delivery_latitude, order.delivery_longitude],
-      13
-    );
+    let cancelled = false;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map);
+    const initMap = async () => {
+      const leaflet = await loadLeaflet();
+      if (!leaflet || cancelled || !mapRef.current || mapInstance.current) return;
 
-    // Add destination marker
-    const destIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    });
+      setLeafletLoaded(true);
 
-    const destMarker = L.marker([order.delivery_latitude, order.delivery_longitude], {
-      icon: destIcon,
-    })
-      .addTo(map)
-      .bindPopup(`<strong>🎯 Your Delivery Address</strong><br>${order.delivery_address}`);
+      const map = leaflet.map(mapRef.current).setView(
+        [order.delivery_latitude, order.delivery_longitude],
+        13
+      );
 
-    destinationMarker.current = destMarker;
-    mapInstance.current = map;
+      leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Add destination marker
+      const destIcon = leaflet.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      });
+
+      const destMarker = leaflet.marker([order.delivery_latitude, order.delivery_longitude], {
+        icon: destIcon,
+      })
+        .addTo(map)
+        .bindPopup(`<strong>Your Delivery Address</strong><br>${order.delivery_address}`);
+
+      destinationMarker.current = destMarker;
+      mapInstance.current = map;
+    };
+
+    initMap();
 
     return () => {
+      cancelled = true;
       if (mapInstance.current) {
         mapInstance.current.remove();
         mapInstance.current = null;
@@ -210,7 +244,7 @@ export default function TrackDeliveryPage() {
 
   // Update driver marker and route
   useEffect(() => {
-    if (!mapInstance.current || !order || !driverLocation) return;
+    if (!mapInstance.current || !order || !driverLocation || !leafletLoaded || !L) return;
 
     const map = mapInstance.current;
 
@@ -229,7 +263,7 @@ export default function TrackDeliveryPage() {
         icon: driverIcon,
       })
         .addTo(map)
-        .bindPopup('<strong>📦 Your Driver</strong><br>En route to you!');
+        .bindPopup('<strong>Your Driver</strong><br>En route to you!');
     } else {
       // Smooth animation to new position
       driverMarker.current.setLatLng([driverLocation.latitude, driverLocation.longitude]);
@@ -269,7 +303,7 @@ export default function TrackDeliveryPage() {
       [order.delivery_latitude, order.delivery_longitude],
     ]);
     map.fitBounds(bounds, { padding: [50, 50] });
-  }, [driverLocation, order]);
+  }, [driverLocation, order, leafletLoaded]);
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {

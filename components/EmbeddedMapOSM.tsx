@@ -2,18 +2,44 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Maximize2, Minimize2, Navigation, MapPin } from 'lucide-react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-routing-machine';
-import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 
-// Fix Leaflet default marker icon issue
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+// Lazy load Leaflet to avoid SSR issues
+let L: typeof import('leaflet') | null = null;
+let cssLoaded = false;
+
+const loadLeaflet = async () => {
+  if (typeof window === 'undefined') return null;
+  if (L) return L;
+  
+  // Load CSS via link elements
+  if (!cssLoaded) {
+    const leafletCss = document.createElement('link');
+    leafletCss.rel = 'stylesheet';
+    leafletCss.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(leafletCss);
+    
+    const routingCss = document.createElement('link');
+    routingCss.rel = 'stylesheet';
+    routingCss.href = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css';
+    document.head.appendChild(routingCss);
+    
+    cssLoaded = true;
+  }
+  
+  const leaflet = await import('leaflet');
+  await import('leaflet-routing-machine');
+  
+  // Fix Leaflet default marker icon issue
+  delete (leaflet.Icon.Default.prototype as any)._getIconUrl;
+  leaflet.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  });
+  
+  L = leaflet;
+  return leaflet;
+};
 
 interface EmbeddedMapOSMProps {
   origin: { lat: number; lng: number; address?: string };
@@ -23,7 +49,7 @@ interface EmbeddedMapOSMProps {
 
 export default function EmbeddedMapOSM({ origin, destination, className = '' }: EmbeddedMapOSMProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
+  const mapInstance = useRef<any>(null);
   const routingControl = useRef<any>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [distance, setDistance] = useState<string>('');
@@ -31,6 +57,7 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
   const [routeLoaded, setRouteLoaded] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [useCurrentLocation, setUseCurrentLocation] = useState(false);
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   // Get driver's current location
   useEffect(() => {
@@ -55,32 +82,45 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    // Choose a safe initial center: destination if valid, else origin, else Nairobi default
-    const destValid = destination && typeof destination.lat === 'number' && typeof destination.lng === 'number' && !Number.isNaN(destination.lat) && !Number.isNaN(destination.lng);
-    const initialCenter: [number, number] = destValid
-      ? [destination.lat, destination.lng]
-      : [origin.lat, origin.lng];
+    let cancelled = false;
 
-    const map = L.map(mapRef.current).setView(initialCenter, 13);
+    const initMap = async () => {
+      const leaflet = await loadLeaflet();
+      if (!leaflet || cancelled || !mapRef.current) return;
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map);
+      setLeafletLoaded(true);
 
-    mapInstance.current = map;
+      // Choose a safe initial center: destination if valid, else origin, else Nairobi default
+      const destValid = destination && typeof destination.lat === 'number' && typeof destination.lng === 'number' && !Number.isNaN(destination.lat) && !Number.isNaN(destination.lng);
+      const initialCenter: [number, number] = destValid
+        ? [destination.lat, destination.lng]
+        : [origin.lat, origin.lng];
+
+      const map = leaflet.map(mapRef.current).setView(initialCenter, 13);
+
+      // Add OpenStreetMap tiles
+      leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      mapInstance.current = map;
+    };
+
+    initMap();
 
     return () => {
+      cancelled = true;
       if (mapInstance.current) {
         mapInstance.current.remove();
         mapInstance.current = null;
       }
     };
-  }, []);
+  }, [origin.lat, origin.lng, destination?.lat, destination?.lng]);
 
   // Create or update routing when we have a valid start and destination
   useEffect(() => {
+    if (!leafletLoaded || !L) return;
     const map = mapInstance.current;
     if (!map) return;
 
@@ -119,7 +159,7 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
         styles: [{ color: '#3b82f6', weight: 5, opacity: 0.8 }]
       },
       createMarker: function(i: number, waypoint: any) {
-        const icon = L.icon({
+        const icon = L!.icon({
           iconUrl: i === 0 
             ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'
             : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -130,15 +170,15 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
           shadowSize: [41, 41]
         });
 
-        const marker = L.marker(waypoint.latLng, { icon });
+        const marker = L!.marker(waypoint.latLng, { icon });
         
         if (i === 0) {
           const startText = useCurrentLocation 
-            ? '<strong>📍 Your Current Location</strong><br>(Driver GPS)' 
+            ? '<strong>Your Current Location</strong><br>(Driver GPS)' 
             : `<strong>Start:</strong><br>${origin.address || 'Default Location'}`;
           marker.bindPopup(startText);
         } else if (i === 1 && destination.address) {
-          marker.bindPopup(`<strong>🎯 Destination:</strong><br>${destination.address}`);
+          marker.bindPopup(`<strong>Destination:</strong><br>${destination.address}`);
         }
         
         return marker;
@@ -184,7 +224,7 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
         routingControl.current = null;
       }
     };
-  }, [useCurrentLocation, currentLocation?.lat, currentLocation?.lng, origin.lat, origin.lng, destination.lat, destination.lng]);
+  }, [leafletLoaded, useCurrentLocation, currentLocation?.lat, currentLocation?.lng, origin.lat, origin.lng, destination.lat, destination.lng]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
