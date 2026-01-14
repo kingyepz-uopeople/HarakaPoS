@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { PaymentMethod } from "@/lib/types";
 import PDAPaymentFlow from "@/components/PDAPaymentFlow";
-import DriverLiveMap from "@/components/DriverLiveMap";
 import { useDriverLocationTracking } from "@/lib/hooks/useDriverLocationTracking";
 import {
   MapPin,
@@ -28,6 +27,12 @@ import {
 const BarcodeDisplay = dynamic(
   () => import("@/components/barcode/BarcodeDisplay"),
   { ssr: false, loading: () => <div className="h-16 bg-gray-100 animate-pulse rounded" /> }
+);
+
+// Dynamic import for maps to avoid SSR issues
+const DriverDeliveryMap = dynamic(
+  () => import("@/components/DriverDeliveryMap"),
+  { ssr: false, loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-xl flex items-center justify-center"><span className="text-gray-500">Loading map...</span></div> }
 );
 
 export default function DeliveryDetailsPage() {
@@ -561,6 +566,10 @@ export default function DeliveryDetailsPage() {
         const destLng = delivery.delivery_longitude || geocodedCoords?.lng;
         const hasCoordinates = destLat && destLng;
         
+        // Default origin (driver's current location or a default)
+        const originLat = currentPosition?.latitude || -1.286389;
+        const originLng = currentPosition?.longitude || 36.817223;
+        
         if (isGeocoding) {
           return (
             <div className={`bg-gray-50 rounded-2xl border border-gray-200 p-6 text-center ${navMode ? 'h-full flex items-center justify-center' : ''}`}>
@@ -575,22 +584,19 @@ export default function DeliveryDetailsPage() {
         if (hasCoordinates) {
           return (
             <div className={navMode ? 'h-full' : ''}>
-              <DriverLiveMap
+              <DriverDeliveryMap
+                origin={{
+                  lat: originLat,
+                  lng: originLng,
+                  address: 'Your Location'
+                }}
                 destination={{
                   lat: destLat,
                   lng: destLng,
                   address: delivery.delivery_address || delivery.location
                 }}
-                driverPosition={
-                  currentPosition
-                    ? { lat: currentPosition.latitude, lng: currentPosition.longitude }
-                    : null
-                }
-                className={`rounded-2xl overflow-hidden border border-gray-100 ${navMode ? 'h-full' : ''}`}
+                className={`rounded-2xl overflow-hidden border border-gray-100 ${navMode ? 'h-full min-h-[400px]' : 'h-80'}`}
                 showNavigateButton={!navMode}
-                onRouteSummary={({ distanceKm, durationText }) => {
-                  console.log(`Route: ${distanceKm.toFixed(1)} km, ETA: ${durationText}`);
-                }}
               />
             </div>
           );
@@ -602,19 +608,23 @@ export default function DeliveryDetailsPage() {
             {/* Show map centered on driver's current location if available */}
             {currentPosition ? (
               <div className={`relative ${navMode ? 'flex-1' : 'h-64'}`}>
-                <DriverLiveMap
+                <DriverDeliveryMap
+                  origin={{
+                    lat: currentPosition.latitude,
+                    lng: currentPosition.longitude,
+                    address: 'Your Location'
+                  }}
                   destination={{
                     lat: currentPosition.latitude,
                     lng: currentPosition.longitude,
                     address: delivery.delivery_address || delivery.location
                   }}
-                  driverPosition={{ lat: currentPosition.latitude, lng: currentPosition.longitude }}
-                  className="h-full"
+                  className="h-full min-h-[250px]"
                   showNavigateButton={false}
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
                   <p className="text-white text-sm font-medium text-center">
-                    📍 Address not found - showing your location
+                    Address not found - showing your location
                   </p>
                   <p className="text-white/80 text-xs text-center mt-1">
                     {delivery.delivery_address || delivery.location}
