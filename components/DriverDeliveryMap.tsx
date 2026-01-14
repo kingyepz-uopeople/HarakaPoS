@@ -74,7 +74,10 @@ interface DriverDeliveryMapProps {
 type MapType = 'osm' | 'mapbox' | 'google';
 
 export default function DriverDeliveryMap({ origin, destination, className = '', showNavigateButton = true }: DriverDeliveryMapProps) {
-  const [mapType, setMapType] = useState<MapType>('osm'); // Default to OSM for reliability
+  // Prefer Google Maps if API key is available, fallback to OSM
+  const [mapType, setMapType] = useState<MapType>(() => {
+    return GOOGLE_MAPS_KEY ? 'google' : 'osm';
+  });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [distance, setDistance] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
@@ -109,6 +112,43 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
   const googleMapInstance = useRef<google.maps.Map | null>(null);
   const directionsService = useRef<google.maps.DirectionsService | null>(null);
   const directionsRenderer = useRef<google.maps.DirectionsRenderer | null>(null);
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+
+  // Load Google Maps script if using Google Maps
+  useEffect(() => {
+    if (mapType !== 'google' || !GOOGLE_MAPS_KEY || typeof window === 'undefined') return;
+    
+    // Check if already loaded
+    if ((window as any).google?.maps) {
+      setGoogleMapsLoaded(true);
+      return;
+    }
+
+    // Check if script is already being loaded
+    const existingScript = document.getElementById('google-maps-script');
+    if (existingScript) {
+      const checkInterval = setInterval(() => {
+        if ((window as any).google?.maps) {
+          clearInterval(checkInterval);
+          setGoogleMapsLoaded(true);
+        }
+      }, 100);
+      return;
+    }
+
+    // Load the script
+    const script = document.createElement('script');
+    script.id = 'google-maps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGoogleMapsLoaded(true);
+    script.onerror = () => {
+      console.error('Failed to load Google Maps, falling back to OSM');
+      setMapType('osm');
+    };
+    document.head.appendChild(script);
+  }, [mapType]);
 
   // Get driver's current location
   useEffect(() => {
@@ -373,15 +413,16 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
 
   // Initialize Google Maps
   useEffect(() => {
-    if (mapType !== 'google' || !googleMapRef.current) return;
+    if (mapType !== 'google' || !googleMapRef.current || !googleMapsLoaded) return;
     if (!hasValidDestination) return;
+    if (googleMapInstance.current) return;
 
     const initGoogleMap = async () => {
       try {
-        // Wait for Google Maps to load
+        // Verify Google Maps is loaded
         if (typeof google === 'undefined' || !google.maps) {
-          console.log('Waiting for Google Maps to load...');
-          setTimeout(initGoogleMap, 500);
+          console.error('Google Maps not loaded, falling back to OSM');
+          setMapType('osm');
           return;
         }
 
@@ -436,20 +477,26 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
         }
 
         googleMapInstance.current = map;
+        setMapError(null);
       } catch (error) {
         console.error('Error initializing Google Maps:', error);
+        setMapError('Google Maps failed to load');
         setRouteLoaded(true);
+        // Fallback to OSM on error
+        setTimeout(() => setMapType('osm'), 1000);
       }
     };
 
     initGoogleMap();
 
     return () => {
-      googleMapInstance.current = null;
+      if (googleMapInstance.current) {
+        googleMapInstance.current = null;
+      }
       directionsService.current = null;
       directionsRenderer.current = null;
     };
-  }, [mapType, useCurrentLocation, currentLocation, origin, destination, hasValidDestination]);
+  }, [mapType, googleMapsLoaded, useCurrentLocation, currentLocation, origin, destination, hasValidDestination]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
