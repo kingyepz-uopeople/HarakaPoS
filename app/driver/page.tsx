@@ -171,35 +171,34 @@ export default function DriverDashboard() {
                 ? "bg-emerald-500" 
                 : "bg-slate-100 dark:bg-slate-800"
             }`}>
-                <Zap className={`w-7 h-7 transition-colors duration-300 ${
-                  driverStatus === "available" ? "text-white" : "text-slate-400"
-                }`} />
-                {driverStatus === "available" && (
-                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white dark:border-slate-900"></span>
-                )}
-              </div>
-              <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white">Status</h3>
-                <p className={`text-sm ${
-                  driverStatus === "available" 
-                    ? "text-emerald-600 dark:text-emerald-400" 
-                    : "text-slate-500 dark:text-slate-400"
-                }`}>
-                  {driverStatus === "available" ? "Online" : "Offline"}
-                </p>
-              </div>
+              <Zap className={`w-7 h-7 transition-colors duration-300 ${
+                driverStatus === "available" ? "text-white" : "text-slate-400"
+              }`} />
+              {driverStatus === "available" && (
+                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white dark:border-slate-900"></span>
+              )}
             </div>
-            <button
-              onClick={toggleAvailability}
-              className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
-                driverStatus === "available"
-                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100"
-                  : "bg-emerald-500 text-white hover:bg-emerald-600"
-              }`}
-            >
-              {driverStatus === "available" ? "Go Offline" : "Go Online"}
-            </button>
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white">Status</h3>
+              <p className={`text-sm ${
+                driverStatus === "available" 
+                  ? "text-emerald-600 dark:text-emerald-400" 
+                  : "text-slate-500 dark:text-slate-400"
+              }`}>
+                {driverStatus === "available" ? "Online" : "Offline"}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={toggleAvailability}
+            className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
+              driverStatus === "available"
+                ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100"
+                : "bg-emerald-500 text-white hover:bg-emerald-600"
+            }`}
+          >
+            {driverStatus === "available" ? "Go Offline" : "Go Online"}
+          </button>
         </div>
       </div>
 
