@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Home, Truck, User, Package } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import DriverNotifications from "@/components/DriverNotifications";
+import ThemeToggle from "@/components/ThemeToggle";
 
 /**
  * Driver Dashboard Layout
@@ -84,7 +85,10 @@ export default function DriverLayout({
                 <h1 className="text-sm sm:text-base font-semibold text-white">{driverName || "Driver"}</h1>
               </div>
             </div>
-            <DriverNotifications />
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <DriverNotifications />
+            </div>
           </div>
         </div>
       </div>
