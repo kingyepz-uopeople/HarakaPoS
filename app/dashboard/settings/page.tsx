@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { Settings as SettingsIcon, Save, RefreshCw } from "lucide-react";
+import { Settings as SettingsIcon, Save, RefreshCw, DollarSign, CreditCard, Building2, Lightbulb } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import type { Settings } from "@/lib/types";
 
@@ -77,7 +77,7 @@ export default function SettingsPage() {
       await Promise.all(updates);
 
       // Show success message
-      alert("✅ Settings updated successfully!");
+      alert("Settings updated successfully!");
 
       // Reload settings
       loadSettings();
@@ -129,7 +129,10 @@ export default function SettingsPage() {
         {/* Pricing Section */}
         <Card>
           <CardHeader>
-            <CardTitle>💰 Pricing Settings</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              Pricing Settings
+            </CardTitle>
             <CardDescription>Configure default prices and fees</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -143,7 +146,7 @@ export default function SettingsPage() {
                   value={formData.price_per_kg || ""}
                   onChange={(e) => handleInputChange("price_per_kg", e.target.value)}
                 />
-                <p className="text-xs text-gray-500">Default price for potato sales</p>
+                <p className="text-xs text-muted-foreground">Default price for potato sales</p>
               </div>
 
               <div className="space-y-2">
@@ -155,7 +158,7 @@ export default function SettingsPage() {
                   value={formData.delivery_fee_flat || ""}
                   onChange={(e) => handleInputChange("delivery_fee_flat", e.target.value)}
                 />
-                <p className="text-xs text-gray-500">Flat delivery fee</p>
+                <p className="text-xs text-muted-foreground">Flat delivery fee</p>
               </div>
 
               <div className="space-y-2">
@@ -167,7 +170,7 @@ export default function SettingsPage() {
                   value={formData.tax_rate || "0"}
                   onChange={(e) => handleInputChange("tax_rate", e.target.value)}
                 />
-                <p className="text-xs text-gray-500">Tax percentage (0 = no tax)</p>
+                <p className="text-xs text-muted-foreground">Tax percentage (0 = no tax)</p>
               </div>
             </div>
           </CardContent>
@@ -176,7 +179,10 @@ export default function SettingsPage() {
         {/* Payment Modes Section */}
         <Card>
           <CardHeader>
-            <CardTitle>💳 Payment Methods</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-blue-600" />
+              Payment Methods
+            </CardTitle>
             <CardDescription>Select available payment options</CardDescription>
           </CardHeader>
           <CardContent>
@@ -187,9 +193,9 @@ export default function SettingsPage() {
                     type="checkbox"
                     checked={paymentModes.includes(mode)}
                     onChange={() => togglePaymentMode(mode)}
-                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                    className="w-4 h-4 text-green-600 bg-background border-gray-300 dark:border-gray-600 rounded focus:ring-green-500 accent-green-600"
                   />
-                  <span className="text-sm font-medium text-gray-700">{mode}</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{mode}</span>
                 </label>
               ))}
             </div>
@@ -199,7 +205,10 @@ export default function SettingsPage() {
         {/* Business Info Section */}
         <Card>
           <CardHeader>
-            <CardTitle>🏢 Business Information</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-purple-600" />
+              Business Information
+            </CardTitle>
             <CardDescription>Update company details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -242,7 +251,7 @@ export default function SettingsPage() {
                 onChange={(e) => handleInputChange("currency", e.target.value)}
                 maxLength={3}
               />
-              <p className="text-xs text-gray-500">3-letter currency code (e.g., KES, USD)</p>
+              <p className="text-xs text-muted-foreground">3-letter currency code (e.g., KES, USD)</p>
             </div>
           </CardContent>
         </Card>
@@ -269,11 +278,14 @@ export default function SettingsPage() {
         </div>
 
         {/* Info Box */}
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
           <CardContent className="p-4">
-            <p className="text-sm text-blue-700">
-              <strong>💡 Note:</strong> These settings will be used as defaults across the system. 
-              You can still override values manually when creating sales or deliveries.
+            <p className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
+              <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>
+                <strong>Note:</strong> These settings will be used as defaults across the system. 
+                You can still override values manually when creating sales or deliveries.
+              </span>
             </p>
           </CardContent>
         </Card>
