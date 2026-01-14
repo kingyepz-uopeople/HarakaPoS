@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { Package, CheckCircle, Clock, MapPin, ChevronRight } from "lucide-react";
+import { Package, CheckCircle, Clock, MapPin, ChevronRight, TrendingUp, Zap, ArrowRight } from "lucide-react";
 
 interface Order {
   id: string;
@@ -86,7 +86,6 @@ export default function DriverDashboard() {
       console.log("Orders data:", ordersData);
 
       if (ordersData) {
-        // Map the data to ensure customers is a single object
         const mappedOrders = ordersData.map((order: any) => ({
           ...order,
           customers: Array.isArray(order.customers) ? order.customers[0] : order.customers
@@ -129,143 +128,171 @@ export default function DriverDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border-4 border-emerald-500/30 border-t-emerald-500 animate-spin mx-auto"></div>
+            <Zap className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+          </div>
+          <p className="mt-6 text-slate-500 dark:text-slate-400 font-medium">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 mb-20 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-600 dark:to-teal-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg">
-        <h1 className="text-xl sm:text-2xl font-bold mb-2">Welcome back, {driverName}!</h1>
-        <p className="text-sm sm:text-base text-emerald-50">Ready to make deliveries today?</p>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4">
-        <div className="flex items-center justify-between">{/* ... existing content ... */}
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white">Status</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {driverStatus === "available" ? "You're available for deliveries" : "You're offline"}
-            </p>
-          </div>
-          <button
-            onClick={toggleAvailability}
-            className={`px-4 sm:px-6 py-2 sm:py-3 rounded-full font-medium transition-colors text-sm sm:text-base ${
-              driverStatus === "available"
-                ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-            }`}
-          >
-            {driverStatus === "available" ? "Available" : "Go Online"}
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-3 sm:p-4 border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-              <Package className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-            </div>
+    <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
+      {/* Hero Welcome Card */}
+      <div className="relative overflow-hidden rounded-3xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500"></div>
+        <div className="relative p-5 sm:p-8">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{todayOrders.length}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Today's Deliveries</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                Welcome back{driverName ? `, ${driverName.split(' ')[0]}` : ''}
+              </h1>
+              <p className="text-emerald-50/80 text-sm sm:text-base">
+                You have <span className="font-semibold text-white">{pending.length}</span> pending deliveries
+              </p>
             </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-3 sm:p-4 border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{completed.length}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Completed</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-3 sm:p-4 border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{pending.length}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Pending</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-3 sm:p-4 border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
-              <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{orders.length}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Total Orders</p>
+            <div className="hidden sm:flex items-center justify-center w-14 h-14 bg-white/10 backdrop-blur-sm rounded-2xl">
+              <TrendingUp className="w-7 h-7 text-white" />
             </div>
           </div>
         </div>
       </div>
 
+      {/* Status Toggle Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className={`relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${
+              driverStatus === "available" 
+                ? "bg-emerald-500" 
+                : "bg-slate-100 dark:bg-slate-800"
+            }`}>
+                <Zap className={`w-7 h-7 transition-colors duration-300 ${
+                  driverStatus === "available" ? "text-white" : "text-slate-400"
+                }`} />
+                {driverStatus === "available" && (
+                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white dark:border-slate-900"></span>
+                )}
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white">Status</h3>
+                <p className={`text-sm ${
+                  driverStatus === "available" 
+                    ? "text-emerald-600 dark:text-emerald-400" 
+                    : "text-slate-500 dark:text-slate-400"
+                }`}>
+                  {driverStatus === "available" ? "Online" : "Offline"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={toggleAvailability}
+              className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
+                driverStatus === "available"
+                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100"
+                  : "bg-emerald-500 text-white hover:bg-emerald-600"
+              }`}
+            >
+              {driverStatus === "available" ? "Go Offline" : "Go Online"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { icon: Package, value: todayOrders.length, label: "Today", color: "emerald" },
+          { icon: CheckCircle, value: completed.length, label: "Done", color: "emerald" },
+          { icon: Clock, value: pending.length, label: "Pending", color: "amber" },
+          { icon: MapPin, value: orders.length, label: "Total", color: "slate" },
+        ].map((stat, index) => (
+          <div key={index} className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col items-center text-center">
+              <div className={`w-10 h-10 rounded-xl bg-${stat.color}-100 dark:bg-${stat.color}-900/30 flex items-center justify-center mb-2`}>
+                <stat.icon className={`w-5 h-5 text-${stat.color}-600 dark:text-${stat.color}-400`} />
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{stat.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Pending Deliveries CTA */}
       {pending.length > 0 && (
         <button
           onClick={() => router.push("/driver/deliveries")}
-          className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-600 dark:to-teal-600 text-white rounded-2xl p-4 font-semibold shadow-lg hover:shadow-xl transition-shadow"
+          className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl p-4 font-semibold flex items-center justify-between hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
         >
-          View {pending.length} Pending Deliver{pending.length === 1 ? "y" : "ies"}
+          <div className="flex items-center gap-3">
+            <Package className="w-5 h-5" />
+            <span>View {pending.length} Pending Deliver{pending.length === 1 ? "y" : "ies"}</span>
+          </div>
+          <ArrowRight className="w-5 h-5" />
         </button>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 border border-gray-100 dark:border-gray-700">
-        <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Recent Deliveries</h3>
+      {/* Recent Deliveries */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-slate-900 dark:text-white">Recent Deliveries</h3>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {orders.length} total
+            </span>
+          </div>
+        </div>
         
-        {orders.length === 0 ? (
-          <div className="text-center py-8">
-            <Package className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-500 dark:text-gray-400">No deliveries assigned yet</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {orders.slice(0, 5).map((order) => (
-              <div
-                key={order.id}
-                onClick={() => router.push(`/driver/deliveries/${order.id}`)}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    order.delivery_status === "Delivered" ? "bg-green-100 dark:bg-green-900/30" :
-                    order.delivery_status === "Out for Delivery" ? "bg-blue-100 dark:bg-blue-900/30" :
-                    order.delivery_status === "Scheduled" ? "bg-purple-100 dark:bg-purple-900/30" :
-                    "bg-orange-100 dark:bg-orange-900/30"
-                  }`}>
-                    <Package className={`w-5 h-5 ${
-                      order.delivery_status === "Delivered" ? "text-green-600 dark:text-green-400" :
-                      order.delivery_status === "Out for Delivery" ? "text-blue-600 dark:text-blue-400" :
-                      order.delivery_status === "Scheduled" ? "text-purple-600 dark:text-purple-400" :
-                      "text-orange-600 dark:text-orange-400"
-                    }`} />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{order.customers.name}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{order.customers.location}</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+        <div>
+          {orders.length === 0 ? (
+            <div className="text-center py-12 px-4">
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Package className="w-8 h-8 text-slate-400" />
               </div>
-            ))}
+              <p className="text-slate-500 dark:text-slate-400 font-medium">No deliveries assigned</p>
+              <p className="text-slate-400 dark:text-slate-500 text-sm mt-1">Check back later</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {orders.slice(0, 5).map((order) => (
+                <div
+                  key={order.id}
+                  onClick={() => router.push(`/driver/deliveries/${order.id}`)}
+                  className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                        order.delivery_status === "Delivered" 
+                          ? "bg-green-100 dark:bg-green-900/30" 
+                          : order.delivery_status === "Out for Delivery" 
+                          ? "bg-blue-100 dark:bg-blue-900/30" 
+                          : "bg-amber-100 dark:bg-amber-900/30"
+                      }`}>
+                        <Package className={`w-5 h-5 ${
+                          order.delivery_status === "Delivered" 
+                            ? "text-green-600 dark:text-green-400" 
+                            : order.delivery_status === "Out for Delivery" 
+                            ? "text-blue-600 dark:text-blue-400" 
+                            : "text-amber-600 dark:text-amber-400"
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-white">{order.customers?.name || 'Unknown'}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">{order.customers?.location || 'No location'}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
     </div>
   );
 }

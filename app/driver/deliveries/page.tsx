@@ -276,8 +276,8 @@ export default function DeliveriesPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading deliveries...</p>
+          <div className="w-12 h-12 rounded-full border-3 border-slate-200 dark:border-slate-700 border-t-emerald-500 animate-spin mx-auto"></div>
+          <p className="mt-4 text-slate-500 dark:text-slate-400 text-sm">Loading deliveries...</p>
         </div>
       </div>
     );
@@ -286,87 +286,65 @@ export default function DeliveriesPage() {
   return (
     <div className="p-4 space-y-4">
       {/* Filter Tabs */}
-      <div className="bg-white rounded-2xl shadow-sm p-2 flex space-x-2">
-        <button
-          onClick={() => setFilter("all")}
-          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-            filter === "all"
-              ? "bg-emerald-600 text-white"
-              : "text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setFilter("pending")}
-          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-            filter === "pending"
-              ? "bg-emerald-600 text-white"
-              : "text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          Pending
-        </button>
-        <button
-          onClick={() => setFilter("active")}
-          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-            filter === "active"
-              ? "bg-emerald-600 text-white"
-              : "text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          Active
-        </button>
+      <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+        {[
+          { key: "all", label: "All" },
+          { key: "pending", label: "Pending" },
+          { key: "active", label: "Active" }
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key as FilterType)}
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+              filter === tab.key
+                ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
+                : "text-slate-600 dark:text-slate-400"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Route Optimization Banner */}
       {filteredDeliveries.length >= 2 && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-2xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-white p-2 rounded-full">
-                <Route className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">
-                  {filteredDeliveries.length} Deliveries
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {optimizedRoute 
-                    ? `Optimized: ${optimizedRoute.totalDistance.toFixed(1)} km, ${Math.round(optimizedRoute.estimatedDuration)} min`
-                    : 'Get the fastest route for all stops'}
-                </p>
-              </div>
+        <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <Route className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <button
-              onClick={handleOptimizeRoute}
-              disabled={optimizing}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {optimizing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span className="text-sm font-medium">Optimizing...</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  <span className="text-sm font-medium">
-                    {optimizedRoute ? 'Re-optimize' : 'Optimize Route'}
-                  </span>
-                </>
-              )}
-            </button>
+            <div>
+              <p className="font-medium text-slate-900 dark:text-white">{filteredDeliveries.length} Deliveries</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {optimizedRoute 
+                  ? `${optimizedRoute.totalDistance.toFixed(1)} km, ${Math.round(optimizedRoute.estimatedDuration)} min`
+                  : 'Optimize your route'}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={handleOptimizeRoute}
+            disabled={optimizing}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            {optimizing ? (
+              <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+            ) : (
+              <Zap className="w-4 h-4" />
+            )}
+            <span>{optimizedRoute ? 'Re-optimize' : 'Optimize'}</span>
+          </button>
         </div>
       )}
 
       {/* Deliveries List */}
       {filteredDeliveries.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No deliveries found</h3>
-          <p className="text-gray-500">
+        <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <Package className="w-6 h-6 text-slate-400" />
+          </div>
+          <h3 className="font-medium text-slate-900 dark:text-white mb-1">No deliveries found</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {filter === "all" 
               ? "You don't have any deliveries yet"
               : `No ${filter} deliveries at the moment`}
@@ -377,79 +355,73 @@ export default function DeliveriesPage() {
           {filteredDeliveries.map((delivery) => (
             <div
               key={delivery.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+              className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden"
             >
               <div className="p-4">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 text-lg">
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
                       {delivery.customer_name}
                     </h3>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(delivery.status)}`}>
+                    <div className="flex gap-2 mt-1.5">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        delivery.status === 'Delivered' 
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                          : delivery.status === 'Out for Delivery' 
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      }`}>
                         {delivery.status}
                       </span>
-                      {delivery.barcode_status && (() => {
-                        const badge = getBarcodeStatusBadge(delivery.barcode_status);
-                        return badge ? (
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${badge.style}`}>
-                            📦 {badge.name}
-                          </span>
-                        ) : null;
-                      })()}
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-gray-900 ml-2">
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                     {formatCurrency(delivery.total_amount)}
                   </p>
                 </div>
 
                 {/* Barcode Info */}
                 {delivery.barcode && (
-                  <div className="mb-3 p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <QrCode className="w-4 h-4 text-emerald-700" />
-                        <span className="text-sm font-medium text-emerald-900">{delivery.barcode}</span>
-                      </div>
-                      {(delivery.scan_count || 0) > 0 && (
-                        <span className="text-xs text-emerald-700">
-                          {delivery.scan_count} scan{delivery.scan_count !== 1 ? 's' : ''}
-                        </span>
-                      )}
+                  <div className="mb-3 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-slate-500" />
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{delivery.barcode}</span>
                     </div>
+                    {(delivery.scan_count || 0) > 0 && (
+                      <span className="text-xs text-slate-500">{delivery.scan_count} scan{delivery.scan_count !== 1 ? 's' : ''}</span>
+                    )}
                   </div>
                 )}
 
                 {/* Details */}
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-start space-x-2 text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <span className="flex-1">{delivery.location}</span>
+                <div className="space-y-2 text-sm mb-4">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-300">{delivery.location}</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Phone className="w-4 h-4 flex-shrink-0" />
-                    <a href={`tel:${delivery.customer_phone}`} className="text-emerald-600 hover:text-emerald-700">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <a href={`tel:${delivery.customer_phone}`} className="text-emerald-600 dark:text-emerald-400">
                       {delivery.customer_phone}
                     </a>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Clock className="w-4 h-4 flex-shrink-0" />
-                    <span>{delivery.delivery_date} {delivery.delivery_time && `at ${delivery.delivery_time}`}</span>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-300">{delivery.delivery_date} {delivery.delivery_time && `at ${delivery.delivery_time}`}</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Package className="w-4 h-4 flex-shrink-0" />
-                    <span>{delivery.quantity_kg} kg</span>
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-300">{delivery.quantity_kg} kg</span>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {delivery.barcode && (
                     <Link
                       href={`/driver/scan?barcode=${delivery.barcode}`}
-                      className="bg-emerald-600 text-white hover:bg-emerald-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
                     >
                       <Camera className="w-4 h-4" />
                       <span>Scan</span>
@@ -457,14 +429,14 @@ export default function DeliveriesPage() {
                   )}
                   <Link
                     href={`/driver/deliveries/${delivery.id}?startNav=true`}
-                    className={`bg-emerald-50 text-emerald-700 hover:bg-emerald-100 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${delivery.barcode ? '' : 'col-span-1'}`}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium"
                   >
                     <Navigation className="w-4 h-4" />
                     <span>Navigate</span>
                   </Link>
                   <Link
                     href={`/driver/deliveries/${delivery.id}`}
-                    className={`bg-gray-100 text-gray-700 hover:bg-gray-200 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${delivery.barcode ? '' : 'col-span-1'}`}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium ${!delivery.barcode ? 'col-span-2 sm:col-span-1' : ''}`}
                   >
                     <span>Details</span>
                     <ChevronRight className="w-4 h-4" />

@@ -161,12 +161,12 @@ export default function DriverNotifications() {
       {/* Notification Bell Button */}
       <button
         onClick={() => setShowPanel(!showPanel)}
-        className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="relative w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center"
         aria-label="Notifications"
       >
-        <Bell className="w-6 h-6 text-gray-700" />
+        <Bell className="w-5 h-5 text-white" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -177,29 +177,35 @@ export default function DriverNotifications() {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/20 z-40"
+            className="fixed inset-0 bg-black/40 z-40"
             onClick={() => setShowPanel(false)}
           />
 
           {/* Panel */}
-          <div className="fixed top-16 right-4 w-80 max-h-[80vh] bg-white rounded-xl shadow-2xl z-50 flex flex-col border border-gray-200">
+          <div className="fixed top-16 right-4 left-4 sm:left-auto sm:w-80 max-h-[70vh] z-50 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Notifications</h3>
+            <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-medium text-slate-900 dark:text-white text-sm">Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">({unreadCount})</span>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-xs text-emerald-600 dark:text-emerald-400 font-medium"
                   >
                     Mark all read
                   </button>
                 )}
                 <button
                   onClick={() => setShowPanel(false)}
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-slate-600"
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -207,42 +213,48 @@ export default function DriverNotifications() {
             {/* Notifications List */}
             <div className="flex-1 overflow-y-auto">
               {loading ? (
-                <div className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-500">Loading...</p>
+                <div className="p-6 text-center">
+                  <div className="w-8 h-8 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-emerald-500 animate-spin mx-auto"></div>
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Loading...</p>
                 </div>
               ) : notifications.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Bell className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">No notifications yet</p>
+                <div className="p-6 text-center">
+                  <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No notifications</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {notifications.map((notification) => (
                     <button
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
-                        !notification.read ? 'bg-blue-50' : ''
+                      className={`w-full p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+                        !notification.read ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''
                       }`}
                     >
                       <div className="flex gap-3">
-                        <div className="flex-shrink-0 mt-1">
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                          notification.type === 'delivery' 
+                            ? 'bg-blue-100 dark:bg-blue-900/30' 
+                            : notification.type === 'alert' 
+                            ? 'bg-red-100 dark:bg-red-900/30' 
+                            : 'bg-slate-100 dark:bg-slate-800'
+                        }`}>
                           {getNotificationIcon(notification.type)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="font-semibold text-sm text-gray-900">
+                            <p className="font-medium text-xs text-slate-900 dark:text-white">
                               {notification.title}
                             </p>
                             {!notification.read && (
-                              <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-1" />
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0 mt-1" />
                             )}
                           </div>
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
                             {formatTime(notification.created_at)}
                           </p>
                         </div>

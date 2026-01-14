@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Home, Truck, User, Bell, Package } from "lucide-react";
+import { Home, Truck, User, Package } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import DriverNotifications from "@/components/DriverNotifications";
 
@@ -58,62 +58,69 @@ export default function DriverLayout({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-slate-950">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 dark:border-emerald-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+          <div className="w-12 h-12 rounded-full border-3 border-slate-200 dark:border-slate-700 border-t-emerald-500 animate-spin mx-auto"></div>
+          <p className="mt-4 text-slate-500 dark:text-slate-400 text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pb-20">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
       {/* Top Bar */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-700 dark:to-teal-700 text-white px-4 py-3 sm:py-4 shadow-lg sticky top-0 z-10">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <div>
-            <p className="text-xs opacity-90">Welcome back,</p>
-            <h1 className="text-base sm:text-lg font-bold">{driverName || "Driver"}</h1>
+      <div className="sticky top-0 z-30 bg-emerald-500 dark:bg-emerald-600">
+        <div className="px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between max-w-4xl mx-auto">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                <span className="text-base font-semibold text-white">
+                  {driverName?.charAt(0) || "D"}
+                </span>
+              </div>
+              <div>
+                <p className="text-xs text-emerald-100/80">Welcome back</p>
+                <h1 className="text-sm sm:text-base font-semibold text-white">{driverName || "Driver"}</h1>
+              </div>
+            </div>
+            <DriverNotifications />
           </div>
-          <DriverNotifications />
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto">
+      <main className="relative max-w-4xl mx-auto">
         {children}
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-20">
-        <div className="max-w-4xl mx-auto px-2 py-2">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+        <div className="max-w-lg mx-auto px-2 py-2">
           <div className="flex items-center justify-around">
-            {navItems.map((item) => {
-              const isActive = item.exact 
-                ? pathname === item.href 
-                : pathname?.startsWith(item.href);
-              const Icon = item.icon;
-              
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex flex-col items-center justify-center px-3 sm:px-4 py-2 rounded-lg transition-all min-w-[60px] sm:min-w-[70px] ${
-                    isActive
-                      ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30"
-                      : "text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  }`}
-                >
-                  <Icon className={`w-5 h-5 sm:w-6 sm:h-6 mb-1 ${isActive ? "stroke-[2.5]" : ""}`} />
-                  <span className={`text-xs ${isActive ? "font-semibold" : "font-medium"}`}>
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
+              {navItems.map((item) => {
+                const isActive = item.exact 
+                  ? pathname === item.href 
+                  : pathname?.startsWith(item.href);
+                const Icon = item.icon;
+                
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex flex-col items-center justify-center px-4 py-2 transition-colors ${
+                      isActive
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 mb-1 ${isActive ? "text-emerald-600 dark:text-emerald-400" : ""}`} />
+                    <span className="text-[10px] font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
       </nav>
     </div>
   );

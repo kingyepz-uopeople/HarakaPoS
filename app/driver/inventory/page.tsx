@@ -9,7 +9,8 @@ import {
   Search, 
   ArrowLeft,
   Calendar,
-  TrendingDown
+  TrendingDown,
+  Box
 } from "lucide-react";
 import { formatCurrency } from "@/utils/formatCurrency";
 
@@ -106,15 +107,16 @@ export default function DriverInventoryPage() {
 
   function getStockStatus(item: InventoryItem): {
     color: string;
+    bgColor: string;
     label: string;
   } {
     if (item.current_stock === 0) {
-      return { color: "bg-red-100 text-red-800", label: "Out of Stock" };
+      return { color: "text-red-700 dark:text-red-400", bgColor: "bg-red-100 dark:bg-red-900/30", label: "Out of Stock" };
     }
     if (item.current_stock <= item.reorder_level) {
-      return { color: "bg-orange-100 text-orange-800", label: "Low Stock" };
+      return { color: "text-amber-700 dark:text-amber-400", bgColor: "bg-amber-100 dark:bg-amber-900/30", label: "Low Stock" };
     }
-    return { color: "bg-green-100 text-green-800", label: "In Stock" };
+    return { color: "text-green-700 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/30", label: "In Stock" };
   }
 
   function getDaysUntilExpiry(expiryDate: string | null): number | null {
@@ -126,62 +128,58 @@ export default function DriverInventoryPage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 mb-20 bg-gray-50">
+    <div className="p-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => router.back()}
-            className="btn-icon btn-icon-sm btn-ghost"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
-          </button>
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Package className="w-5 h-5 sm:w-6 sm:h-6" />
-              Inventory
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-600">
-              View-only stock levels
-            </p>
-          </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => router.back()}
+          className="w-10 h-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+        </button>
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Inventory</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">View stock levels</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-600 mb-1">Total Items</p>
-          <p className="text-xl sm:text-2xl font-bold text-gray-900">
-            {inventory.length}
-          </p>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            <Box className="w-4 h-4 text-blue-500" />
+            <span className="text-lg font-bold text-slate-900 dark:text-white">{inventory.length}</span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total Items</p>
         </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-orange-200">
-          <p className="text-xs text-orange-600 mb-1">Low Stock</p>
-          <p className="text-xl sm:text-2xl font-bold text-orange-700">
-            {lowStockItems.length}
-          </p>
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <span className="text-lg font-bold text-slate-900 dark:text-white">{lowStockItems.length}</span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Low Stock</p>
         </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-red-200">
-          <p className="text-xs text-red-600 mb-1">Expiring</p>
-          <p className="text-xl sm:text-2xl font-bold text-red-700">
-            {expiringSoon.length}
-          </p>
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-red-500" />
+            <span className="text-lg font-bold text-slate-900 dark:text-white">{expiringSoon.length}</span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Expiring</p>
         </div>
       </div>
 
       {/* Alerts */}
       {lowStockItems.length > 0 && (
-        <div className="bg-orange-50 border-l-4 border-orange-600 p-3 rounded-lg">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded-lg p-3">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="text-sm font-semibold text-orange-800">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                 {lowStockItems.length} item{lowStockItems.length !== 1 ? "s" : ""} low on stock
-              </h3>
-              <p className="text-xs text-orange-700 mt-1">
-                Inform admin to restock: {lowStockItems.slice(0, 3).map(i => i.product_name).join(", ")}
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                {lowStockItems.slice(0, 3).map(i => i.product_name).join(", ")}
                 {lowStockItems.length > 3 && ` +${lowStockItems.length - 3} more`}
               </p>
             </div>
@@ -190,67 +188,54 @@ export default function DriverInventoryPage() {
       )}
 
       {/* Filter Tabs */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-2">
-        <div className="flex gap-2">
+      <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+        {[
+          { key: "all", label: `All (${inventory.length})` },
+          { key: "low", label: `Low (${lowStockItems.length})` },
+          { key: "expiring", label: `Expiring (${expiringSoon.length})` },
+        ].map((tab) => (
           <button
-            onClick={() => setFilterView("all")}
-            className={`btn btn-sm flex-1 ${
-              filterView === "all" ? "btn-primary" : "btn-ghost"
+            key={tab.key}
+            onClick={() => setFilterView(tab.key as typeof filterView)}
+            className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+              filterView === tab.key
+                ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
+                : "text-slate-600 dark:text-slate-400"
             }`}
           >
-            All ({inventory.length})
+            {tab.label}
           </button>
-          <button
-            onClick={() => setFilterView("low")}
-            className={`btn btn-sm flex-1 ${
-              filterView === "low" ? "btn-warning" : "btn-ghost"
-            }`}
-          >
-            Low ({lowStockItems.length})
-          </button>
-          <button
-            onClick={() => setFilterView("expiring")}
-            className={`btn btn-sm flex-1 ${
-              filterView === "expiring" ? "btn-danger" : "btn-ghost"
-            }`}
-          >
-            Expiring ({expiringSoon.length})
-          </button>
-        </div>
+        ))}
       </div>
 
       {/* Search */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
-          <input
-            type="text"
-            placeholder="Search products..."
-            className="w-full pl-9 sm:pl-10 pr-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+        <input
+          type="text"
+          placeholder="Search products..."
+          className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm text-slate-900 dark:text-white placeholder-slate-400"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       {/* Inventory List */}
       {loading ? (
-        <div className="bg-white rounded-2xl shadow-sm p-8 sm:p-12 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading inventory...</p>
+        <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="w-10 h-10 rounded-full border-3 border-slate-200 dark:border-slate-700 border-t-emerald-500 animate-spin mx-auto"></div>
+          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Loading inventory...</p>
         </div>
       ) : filteredInventory.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm p-8 sm:p-12 text-center">
-          <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
-            No items found
-          </h3>
-          <p className="text-sm sm:text-base text-gray-500">
-            Try adjusting your search or filter
-          </p>
+        <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <Package className="w-6 h-6 text-slate-400" />
+          </div>
+          <h3 className="font-medium text-slate-900 dark:text-white mb-1">No items found</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Try adjusting your search or filter</p>
         </div>
       ) : (
-        <div className="space-y-2 sm:space-y-3">
+        <div className="space-y-2">
           {filteredInventory.map((item) => {
             const status = getStockStatus(item);
             const daysLeft = getDaysUntilExpiry(item.expiry_date);
@@ -258,58 +243,55 @@ export default function DriverInventoryPage() {
             return (
               <div
                 key={item.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1">
+                    <h3 className="font-medium text-slate-900 dark:text-white text-sm">
                       {item.product_name}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-600">
-                      <span className="px-2 py-0.5 bg-gray-100 rounded">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-xs">
                         {item.product_code}
                       </span>
-                      <span>•</span>
                       <span>{item.category}</span>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className={`px-2 py-1 rounded-md text-xs font-medium ${status.color}`}>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${status.bgColor} ${status.color}`}>
                         {status.label}
                       </span>
                       
                       {item.current_stock <= item.reorder_level && (
-                        <span className="flex items-center gap-1 text-xs text-orange-700">
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded text-xs">
                           <AlertTriangle className="w-3 h-3" />
-                          Reorder needed
+                          Reorder
                         </span>
                       )}
 
                       {item.is_perishable && daysLeft !== null && daysLeft <= 7 && (
-                        <span className="flex items-center gap-1 text-xs text-red-700">
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded text-xs">
                           <Calendar className="w-3 h-3" />
-                          Expires in {daysLeft}d
+                          {daysLeft}d
                         </span>
                       )}
 
                       {item.wastage_quantity > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-purple-700">
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded text-xs">
                           <TrendingDown className="w-3 h-3" />
-                          {item.wastage_quantity} {item.unit} wasted
+                          {item.wastage_quantity} wasted
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="text-right flex-shrink-0">
-                    <p className="text-lg sm:text-xl font-bold text-gray-900">
+                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                       {item.current_stock}
                     </p>
-                    <p className="text-xs text-gray-500">{item.unit}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Min: {item.reorder_level}
-                    </p>
-                    <p className="text-xs font-medium text-emerald-700 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{item.unit}</p>
+                    <p className="text-xs text-slate-400 mt-1">Min: {item.reorder_level}</p>
+                    <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-1">
                       {formatCurrency(item.unit_price)}/{item.unit}
                     </p>
                   </div>

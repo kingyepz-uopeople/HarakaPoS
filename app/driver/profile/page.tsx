@@ -7,8 +7,7 @@ import {
   User, 
   Phone, 
   Mail, 
-  MapPin, 
-  Truck,
+  MapPin,
   LogOut,
   ChevronRight,
   Bell,
@@ -16,7 +15,9 @@ import {
   Shield,
   Edit,
   Save,
-  X
+  X,
+  Settings,
+  Info
 } from "lucide-react";
 
 interface DriverInfo {
@@ -135,143 +136,106 @@ export default function ProfilePage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
+          <div className="w-12 h-12 rounded-full border-3 border-slate-200 dark:border-slate-700 border-t-emerald-500 animate-spin mx-auto"></div>
+          <p className="mt-4 text-slate-500 dark:text-slate-400 text-sm">Loading profile...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-4">
       {/* Profile Header */}
-      <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-3xl p-8 text-white shadow-xl">
+      <div className="bg-emerald-500 dark:bg-emerald-600 rounded-lg p-5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
-              <User className="w-10 h-10" />
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center">
+              <span className="text-xl font-semibold text-white">
+                {driverInfo?.name?.charAt(0) || "D"}
+              </span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{driverInfo?.name}</h1>
-              <p className="text-sm opacity-90">{driverInfo?.role}</p>
+              <h1 className="text-lg font-semibold text-white">{driverInfo?.name}</h1>
+              <span className="text-sm text-emerald-100/80 capitalize">{driverInfo?.role}</span>
             </div>
           </div>
           <button
             onClick={openEditModal}
-            className="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+            className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center"
           >
-            <Edit className="w-5 h-5" />
+            <Edit className="w-4 h-4 text-white" />
           </button>
         </div>
       </div>
 
       {/* Personal Information */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-        <div className="p-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Personal Information</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
+          <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <h2 className="font-medium text-slate-900 dark:text-white text-sm">Personal Information</h2>
         </div>
-        <div className="divide-y divide-gray-100">
-          <div className="p-4 flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-              <User className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div className="flex-1">
-              <p className="text-xs text-gray-500">Full Name</p>
-              <p className="font-medium text-gray-900">{driverInfo?.name}</p>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="p-3 flex items-center gap-3">
+            <User className="w-4 h-4 text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Full Name</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{driverInfo?.name}</p>
             </div>
           </div>
-
-          <div className="p-4 flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-              <Mail className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div className="flex-1">
-              <p className="text-xs text-gray-500">Email</p>
-              <p className="font-medium text-gray-900">{driverInfo?.email}</p>
+          <div className="p-3 flex items-center gap-3">
+            <Mail className="w-4 h-4 text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Email</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{driverInfo?.email}</p>
             </div>
           </div>
-
-          <div className="p-4 flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-              <Phone className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div className="flex-1">
-              <p className="text-xs text-gray-500">Phone</p>
-              <p className="font-medium text-gray-900">{driverInfo?.phone}</p>
+          <div className="p-3 flex items-center gap-3">
+            <Phone className="w-4 h-4 text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Phone</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{driverInfo?.phone}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* App Settings */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-        <div className="p-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">App Settings</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
+          <Settings className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <h2 className="font-medium text-slate-900 dark:text-white text-sm">App Settings</h2>
         </div>
-        <div className="divide-y divide-gray-100">
-          <button 
-            onClick={() => router.push('/driver/profile/notifications')}
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                <Bell className="w-5 h-5 text-gray-600" />
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {[
+            { icon: Bell, label: "Notifications", href: "/driver/profile/notifications" },
+            { icon: MapPin, label: "Location Settings", href: "/driver/profile/location" },
+            { icon: Globe, label: "Language", href: "/driver/profile/language" },
+            { icon: Shield, label: "Privacy & Security", href: "/driver/profile/privacy" },
+          ].map((item, index) => (
+            <button 
+              key={index}
+              onClick={() => router.push(item.href)}
+              className="w-full p-3 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <item.icon className="w-4 h-4 text-slate-400" />
+                <span className="text-sm text-slate-900 dark:text-white">{item.label}</span>
               </div>
-              <span className="font-medium text-gray-900">Notifications</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
-          </button>
-
-          <button 
-            onClick={() => router.push('/driver/profile/location')}
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-gray-600" />
-              </div>
-              <span className="font-medium text-gray-900">Location Settings</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
-          </button>
-
-          <button 
-            onClick={() => router.push('/driver/profile/language')}
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                <Globe className="w-5 h-5 text-gray-600" />
-              </div>
-              <span className="font-medium text-gray-900">Language</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
-          </button>
-
-          <button 
-            onClick={() => router.push('/driver/profile/privacy')}
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-gray-600" />
-              </div>
-              <span className="font-medium text-gray-900">Privacy & Security</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
-          </button>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </button>
+          ))}
         </div>
       </div>
 
       {/* About */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-        <div className="p-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">About</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
+          <Info className="w-4 h-4 text-slate-500" />
+          <h2 className="font-medium text-slate-900 dark:text-white text-sm">About</h2>
         </div>
-        <div className="p-4 space-y-2 text-sm text-gray-600">
-          <p>HarakaPoS Driver App</p>
-          <p>Version 1.0.0</p>
-          <p className="text-xs text-gray-400">© 2025 HarakaPoS. All rights reserved.</p>
+        <div className="p-3">
+          <p className="text-sm font-medium text-slate-900 dark:text-white">HarakaPoS Driver App</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Version 1.0.0</p>
         </div>
       </div>
 
@@ -279,80 +243,79 @@ export default function ProfilePage() {
       <button
         onClick={handleLogout}
         disabled={loggingOut}
-        className="w-full bg-red-50 hover:bg-red-100 text-red-600 py-4 px-4 rounded-2xl font-semibold transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 p-3 bg-red-600 text-white rounded-lg font-medium"
       >
-        <LogOut className="w-5 h-5" />
+        <LogOut className="w-4 h-4" />
         <span>{loggingOut ? "Logging out..." : "Logout"}</span>
       </button>
 
       {/* Edit Profile Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-lg overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
+            <div className="bg-emerald-500 dark:bg-emerald-600 p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Edit Profile</h2>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-4 h-4 text-white" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
+            <form onSubmit={handleSaveProfile} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Full Name
                 </label>
                 <input
                   type="text"
                   value={editFormData.name}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900 dark:text-white text-sm"
                   placeholder="Enter your full name"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Phone Number
                 </label>
                 <input
                   type="tel"
                   value={editFormData.phone}
                   onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900 dark:text-white text-sm"
                   placeholder="e.g., 0712345678"
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500">Format: 07XX XXX XXX or +254 XXX XXX XXX</p>
               </div>
 
-              <div className="bg-gray-50 rounded-xl p-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <p className="text-gray-900">{driverInfo?.email}</p>
-                <p className="mt-1 text-xs text-gray-500">Email cannot be changed. Contact admin if needed.</p>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                <label className="block text-xs text-slate-500 dark:text-slate-400">Email</label>
+                <p className="text-sm text-slate-900 dark:text-white">{driverInfo?.email}</p>
+                <p className="mt-1 text-xs text-slate-400">Contact admin to change email</p>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                  className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  {saving ? "Saving..." : "Save Changes"}
+                  {saving ? "Saving..." : "Save"}
                 </button>
               </div>
             </form>
