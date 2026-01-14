@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { EtimsConfig } from '@/lib/types';
-import { Settings, Save, AlertCircle, CheckCircle, Server } from 'lucide-react';
+import { Settings, Save, AlertCircle, CheckCircle, Server, Zap, ExternalLink } from 'lucide-react';
+import { gavaConnect } from '@/lib/gavaconnect-api';
 
 export default function EtimsConfigPage() {
   const supabase = createClient();
@@ -16,10 +17,6 @@ export default function EtimsConfigPage() {
     business_name: 'Haraka Wedges Supplies',
     kra_pin: '',
     business_type: 'sole_proprietorship',
-    provider: 'gavaconnect' as 'kra' | 'gavaconnect',
-    gavaconnect_app_id: '',
-    gavaconnect_api_key: '',
-    gavaconnect_api_secret: '',
     environment: 'sandbox' as 'sandbox' | 'production',
     bhf_id: '',
     tin: '',
@@ -49,10 +46,6 @@ export default function EtimsConfigPage() {
         business_name: data.business_name,
         kra_pin: data.kra_pin,
         business_type: data.business_type,
-        provider: data.provider || 'gavaconnect',
-        gavaconnect_app_id: data.gavaconnect_app_id || '',
-        gavaconnect_api_key: data.gavaconnect_api_key || '',
-        gavaconnect_api_secret: data.gavaconnect_api_secret || '',
         environment: data.environment,
         bhf_id: data.bhf_id || '',
         tin: data.tin || '',
@@ -264,101 +257,20 @@ export default function EtimsConfigPage() {
 
           {/* OSCU Information */}
           <div className="border-t pt-6">
-            <h2 className="text-xl font-semibold mb-4">eTIMS Provider</h2>
+            <h2 className="text-xl font-semibold mb-4">OSCU Configuration</h2>
             
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                Integration Provider *
-              </label>
-              <select
-                value={formData.provider}
-                onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'kra' | 'gavaconnect' })}
-                className="w-full px-3 py-2 border rounded-lg"
-                required
-              >
-                <option value="gavaconnect">GavaConnect (Recommended for Development)</option>
-                <option value="kra">KRA Direct API</option>
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                {formData.provider === 'gavaconnect' 
-                  ? 'GavaConnect provides a developer-friendly sandbox and middleware for eTIMS testing'
-                  : 'Direct integration with KRA eTIMS API (requires active KRA credentials)'
-                }
-              </p>
+            <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="text-sm text-green-800">
+                <strong>✅ Cloud-based OSCU (Online Sales Control Unit)</strong>
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>No physical KRA device required</li>
+                  <li>Pure REST API integration with KRA</li>
+                  <li>Works on any cloud platform (Vercel, AWS, etc.)</li>
+                  <li>Device ID auto-generated on initialization</li>
+                  <li>QR codes provided directly by KRA</li>
+                </ul>
+              </div>
             </div>
-
-            {formData.provider === 'gavaconnect' && (
-              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="text-sm text-blue-800">
-                  <strong>🔗 GavaConnect Setup</strong>
-                  <ol className="list-decimal list-inside ml-4 mt-2 space-y-1">
-                    <li>Sign up at <a href="https://gavaconnect.com" target="_blank" rel="noopener noreferrer" className="underline">gavaconnect.com</a></li>
-                    <li>Create a new app and select "Products" integration</li>
-                    <li>Copy your App ID, API Key, and API Secret from the dashboard</li>
-                    <li>Paste them below to connect</li>
-                  </ol>
-                </div>
-              </div>
-            )}
-
-            {formData.provider === 'gavaconnect' ? (
-              <div className="grid grid-cols-1 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    GavaConnect App ID *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.gavaconnect_app_id}
-                    onChange={(e) => setFormData({ ...formData, gavaconnect_app_id: e.target.value })}
-                    placeholder="Your GavaConnect App ID"
-                    className="w-full px-3 py-2 border rounded-lg font-mono text-sm"
-                    required={formData.provider === 'gavaconnect'}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    GavaConnect API Key *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.gavaconnect_api_key}
-                    onChange={(e) => setFormData({ ...formData, gavaconnect_api_key: e.target.value })}
-                    placeholder="Your GavaConnect API Key"
-                    className="w-full px-3 py-2 border rounded-lg font-mono text-sm"
-                    required={formData.provider === 'gavaconnect'}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    GavaConnect API Secret *
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.gavaconnect_api_secret}
-                    onChange={(e) => setFormData({ ...formData, gavaconnect_api_secret: e.target.value })}
-                    placeholder="Your GavaConnect API Secret"
-                    className="w-full px-3 py-2 border rounded-lg font-mono text-sm"
-                    required={formData.provider === 'gavaconnect'}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="text-sm text-green-800">
-                  <strong>✅ Cloud-based OSCU (Online Sales Control Unit)</strong>
-                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
-                    <li>No physical KRA device required</li>
-                    <li>Pure REST API integration with KRA</li>
-                    <li>Works on any cloud platform (Vercel, AWS, etc.)</li>
-                    <li>Device ID auto-generated on initialization</li>
-                    <li>QR codes provided directly by KRA</li>
-                  </ul>
-                </div>
-              </div>
-            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -490,6 +402,168 @@ export default function EtimsConfigPage() {
           <li>• <strong>eTIMS Portal:</strong> <a href="https://etims.kra.go.ke" target="_blank" className="text-blue-600 hover:underline">https://etims.kra.go.ke</a></li>
           <li>• <strong>Technical Support:</strong> +254 791 890 8858</li>
         </ul>
+      </div>
+
+      {/* GavaConnect Section */}
+      <GavaConnectSection />
+    </div>
+  );
+}
+
+// GavaConnect Integration Section
+function GavaConnectSection() {
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{success: boolean; message: string} | null>(null);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [checkResult, setCheckResult] = useState<any>(null);
+  const [checking, setChecking] = useState(false);
+
+  const isConfigured = typeof window !== 'undefined' && 
+    !!(process.env.NEXT_PUBLIC_GAVACONNECT_CONSUMER_KEY);
+
+  const testConnection = async () => {
+    setTesting(true);
+    setTestResult(null);
+    
+    try {
+      const result = await gavaConnect.testConnection();
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Connection test failed' 
+      });
+    }
+    
+    setTesting(false);
+  };
+
+  const checkInvoice = async () => {
+    if (!invoiceNumber.trim()) return;
+    
+    setChecking(true);
+    setCheckResult(null);
+    
+    try {
+      const result = await gavaConnect.checkInvoice({ invoiceNumber: invoiceNumber.trim() });
+      setCheckResult(result);
+    } catch (error) {
+      setCheckResult({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Invoice check failed' 
+      });
+    }
+    
+    setChecking(false);
+  };
+
+  return (
+    <div className="mt-6 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 p-6 rounded-xl">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="bg-green-600 p-2 rounded-lg">
+          <Zap className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-green-900">GavaConnect Integration</h3>
+          <p className="text-sm text-green-700">Kenya Government Digital Services Gateway - Invoice Checker</p>
+        </div>
+      </div>
+
+      {/* Configuration Status */}
+      <div className={`p-4 rounded-lg mb-4 ${isConfigured ? 'bg-green-100' : 'bg-yellow-100'}`}>
+        <div className="flex items-center gap-2">
+          {isConfigured ? (
+            <CheckCircle className="w-5 h-5 text-green-600" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-yellow-600" />
+          )}
+          <span className={`font-medium ${isConfigured ? 'text-green-800' : 'text-yellow-800'}`}>
+            {isConfigured ? 'GavaConnect Configured' : 'GavaConnect Not Configured'}
+          </span>
+        </div>
+        {!isConfigured && (
+          <p className="text-sm text-yellow-700 mt-2">
+            Add <code className="bg-yellow-200 px-1 rounded">NEXT_PUBLIC_GAVACONNECT_CONSUMER_KEY</code> and{' '}
+            <code className="bg-yellow-200 px-1 rounded">GAVACONNECT_CONSUMER_SECRET</code> to your environment variables.
+          </p>
+        )}
+      </div>
+
+      {/* Test Connection */}
+      <div className="space-y-4">
+        <div>
+          <button
+            onClick={testConnection}
+            disabled={testing || !isConfigured}
+            className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {testing ? (
+              <>
+                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                Testing...
+              </>
+            ) : (
+              <>
+                <Zap className="w-4 h-4" />
+                Test Connection
+              </>
+            )}
+          </button>
+          
+          {testResult && (
+            <div className={`mt-2 p-3 rounded-lg ${testResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {testResult.message}
+            </div>
+          )}
+        </div>
+
+        {/* Invoice Checker */}
+        <div className="border-t border-green-200 pt-4">
+          <h4 className="font-semibold text-green-900 mb-3">Invoice Checker (Sandbox)</h4>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
+              placeholder="Enter invoice number to verify"
+              className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={!isConfigured}
+            />
+            <button
+              onClick={checkInvoice}
+              disabled={checking || !isConfigured || !invoiceNumber.trim()}
+              className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {checking ? 'Checking...' : 'Verify'}
+            </button>
+          </div>
+          
+          {checkResult && (
+            <div className={`mt-3 p-4 rounded-lg ${checkResult.success ? 'bg-green-100' : 'bg-red-100'}`}>
+              <p className={`font-medium ${checkResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                {checkResult.message}
+              </p>
+              {checkResult.data && (
+                <pre className="mt-2 text-xs bg-white p-2 rounded overflow-auto max-h-40">
+                  {JSON.stringify(checkResult.data, null, 2)}
+                </pre>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Links */}
+      <div className="mt-4 pt-4 border-t border-green-200">
+        <a 
+          href="https://developer.go.ke" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-sm text-green-700 hover:text-green-900"
+        >
+          <ExternalLink className="w-4 h-4" />
+          GavaConnect Developer Portal
+        </a>
       </div>
     </div>
   );
