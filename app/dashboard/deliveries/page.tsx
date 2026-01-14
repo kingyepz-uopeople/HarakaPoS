@@ -180,7 +180,7 @@ export default function DeliveriesPage() {
               <p className="text-sm text-orange-600 font-medium">Unassigned</p>
               <p className="text-2xl font-bold text-orange-700 mt-1">{stats.unassigned}</p>
               {showUnassignedOnly && (
-                <p className="text-xs text-orange-600 mt-1">✓ Filtering</p>
+                                <p className="text-xs text-orange-600 mt-1">Filtering</p>
               )}
             </div>
             <div className="p-3 bg-orange-100 rounded-lg">
@@ -239,7 +239,7 @@ export default function DeliveriesPage() {
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"
               }`}
             >
-              {showUnassignedOnly ? "✓ " : ""}Show Unassigned Only
+                            {showUnassignedOnly ? "* " : ""}Show Unassigned Only
             </button>
           </div>
         </div>
@@ -320,7 +320,7 @@ export default function DeliveriesPage() {
                             : "border-gray-300 bg-white text-gray-700 focus:ring-blue-500"
                         }`}
                       >
-                        <option value="">{!order.assigned_driver ? "⚠️ Assign Driver" : "Unassign"}</option>
+                        <option value="">{!order.assigned_driver ? "! Assign Driver" : "Unassign"}</option>
                         {drivers.map((driver) => (
                           <option key={driver.id} value={driver.id}>
                             {driver.name}

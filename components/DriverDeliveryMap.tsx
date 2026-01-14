@@ -625,8 +625,8 @@ export default function DriverDeliveryMap({ origin, destination, className = '',
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               {useCurrentLocation && (
-                <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full whitespace-nowrap">
-                  📍 GPS
+                                <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full whitespace-nowrap">
+                  GPS Active
                 </span>
               )}
               

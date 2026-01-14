@@ -610,7 +610,7 @@ export default function OrdersPage() {
                             : "border-gray-300 bg-white text-gray-700 focus:ring-blue-500"
                         }`}
                       >
-                        <option value="">{!order.assigned_driver ? "⚠️ Assign Driver" : "Unassign"}</option>
+                        <option value="">{!order.assigned_driver ? "! Assign Driver" : "Unassign"}</option>
                         {drivers.map((driver) => (
                           <option key={driver.id} value={driver.id}>
                             {driver.name}
@@ -857,9 +857,9 @@ export default function OrdersPage() {
                           ? 'text-green-700 dark:text-green-300'
                           : 'text-yellow-700 dark:text-yellow-300'
                       }`}>
-                        {formData.delivery_latitude && formData.delivery_longitude
-                          ? '✅ Location auto-filled from customer profile with coordinates. You can change it below if needed.'
-                          : '⚠️ Address auto-filled but coordinates are missing. Please paste a Google Maps link or use "Show Map" to set the exact location.'
+                                                {formData.delivery_latitude && formData.delivery_longitude
+                          ? 'Location auto-filled from customer profile with coordinates. You can change it below if needed.'
+                          : 'Address auto-filled but coordinates are missing. Please paste a Google Maps link or use "Show Map" to set the exact location.'
                         }
                       </p>
                     </div>

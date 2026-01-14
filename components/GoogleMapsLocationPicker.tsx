@@ -269,9 +269,9 @@ export default function GoogleMapsLocationPicker({
         </div>
       )}
 
-      {!apiKey && (
+            {!apiKey && (
         <div className="text-xs text-gray-500 dark:text-gray-400">
-          💡 Add Google Maps API key for autocomplete and map features
+          Add Google Maps API key for autocomplete and map features
         </div>
       )}
     </div>

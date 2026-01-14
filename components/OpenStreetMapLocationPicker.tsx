@@ -48,15 +48,15 @@ const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: numb
   try {
     let urlToProcess = url.trim();
     
-    console.log('🔍 Processing Google Maps URL:', urlToProcess);
+    console.log('Processing Google Maps URL:', urlToProcess);
     
     // For shortened goo.gl links, we can't extract coordinates reliably
     if (urlToProcess.includes('maps.app.goo.gl') || urlToProcess.includes('goo.gl/maps')) {
-      console.log('⚠️ Shortened Google Maps link detected - cannot extract coordinates');
+      console.log('Shortened Google Maps link detected - cannot extract coordinates');
       
       // Show helpful message
       setTimeout(() => {
-        alert('📍 Cannot Use Shortened Google Maps Links\n\n✅ EASY FIX - Use one of these instead:\n\n1️⃣ SEARCH: Just type the place name (e.g., "Galanos Hotel Kangema")\n\n2️⃣ FULL URL: Open the short link in browser, copy the FULL URL\n\n3️⃣ CLICK MAP: Click "Show Map" and click on the location\n\n4️⃣ GPS: Click "Use Current Location" if you\'re there\n\nThe field will be cleared so you can try again.');
+        alert('Cannot Use Shortened Google Maps Links\n\nEASY FIX - Use one of these instead:\n\n1. SEARCH: Just type the place name (e.g., "Galanos Hotel Kangema")\n\n2. FULL URL: Open the short link in browser, copy the FULL URL\n\n3. CLICK MAP: Click "Show Map" and click on the location\n\n4. GPS: Click "Use Current Location" if you\'re there\n\nThe field will be cleared so you can try again.');
       }, 100);
       
       return null;
@@ -66,50 +66,50 @@ const extractCoordsFromGoogleMapsLink = async (url: string): Promise<{ lat: numb
     // Format 1: @-1.286389,36.817223 (most common)
     const atMatch = urlToProcess.match(/@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
     if (atMatch) {
-      console.log('✅ Extracted coordinates using @ pattern');
+      console.log('Extracted coordinates using @ pattern');
       return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
     }
 
     // Format 2: q=-1.286389,36.817223
     const qMatch = urlToProcess.match(/[?&]q=(-?\d+\.?\d+),(-?\d+\.?\d+)/);
     if (qMatch) {
-      console.log('✅ Extracted coordinates using q= pattern');
+      console.log('Extracted coordinates using q= pattern');
       return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
     }
 
     // Format 3: ll=-1.286389,36.817223
     const llMatch = urlToProcess.match(/[?&]ll=(-?\d+\.?\d+),(-?\d+\.?\d+)/);
     if (llMatch) {
-      console.log('✅ Extracted coordinates using ll= pattern');
+      console.log('Extracted coordinates using ll= pattern');
       return { lat: parseFloat(llMatch[1]), lng: parseFloat(llMatch[2]) };
     }
 
     // Format 4: place/Location+Name/@-1.286389,36.817223
     const placeMatch = urlToProcess.match(/place\/[^/]+\/@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
     if (placeMatch) {
-      console.log('✅ Extracted coordinates using place pattern');
+      console.log('Extracted coordinates using place pattern');
       return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
     }
 
     // Format 5: 3d-0.6859494!4d36.9697061 (encoded coordinates)
     const encodedMatch = urlToProcess.match(/3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)/);
     if (encodedMatch) {
-      console.log('✅ Extracted coordinates using 3d/4d encoded pattern');
+      console.log('Extracted coordinates using 3d/4d encoded pattern');
       return { lat: parseFloat(encodedMatch[1]), lng: parseFloat(encodedMatch[2]) };
     }
 
     // Format 6: Just coordinates separated by comma (direct input)
     const coordMatch = urlToProcess.match(/^(-?\d+\.?\d+)\s*,\s*(-?\d+\.?\d+)$/);
     if (coordMatch) {
-      console.log('✅ Extracted coordinates from direct input');
+      console.log('Extracted coordinates from direct input');
       return { lat: parseFloat(coordMatch[1]), lng: parseFloat(coordMatch[2]) };
     }
 
     // If all extraction attempts fail
-    console.warn('⚠️ Could not extract coordinates from URL:', urlToProcess);
+    console.warn('Could not extract coordinates from URL:', urlToProcess);
     return null;
   } catch (error) {
-    console.error('❌ Error extracting coordinates:', error);
+    console.error('Error extracting coordinates:', error);
     return null;
   }
 };
@@ -182,37 +182,37 @@ export default function OpenStreetMapLocationPicker({
 
     const initGoogleMap = async () => {
       try {
-        console.log('🗺️ Initializing Google Maps with API key:', GOOGLE_MAPS_API_KEY ? `${GOOGLE_MAPS_API_KEY.substring(0, 20)}...` : 'NOT FOUND');
+        console.log('Initializing Google Maps with API key:', GOOGLE_MAPS_API_KEY ? `${GOOGLE_MAPS_API_KEY.substring(0, 20)}...` : 'NOT FOUND');
         
         // Load Google Maps if not already loaded
         if (!window.google?.maps) {
           // Check if script is already being loaded
           const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
           if (!existingScript) {
-            console.log('📥 Loading Google Maps script...');
+            console.log('Loading Google Maps script...');
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
             script.async = true;
             script.defer = true;
             await new Promise((resolve, reject) => {
               script.onload = () => {
-                console.log('✅ Google Maps script loaded successfully');
+                console.log('Google Maps script loaded successfully');
                 resolve(true);
               };
               script.onerror = (error) => {
-                console.error('❌ Failed to load Google Maps script:', error);
+                console.error('Failed to load Google Maps script:', error);
                 reject(error);
               };
               document.head.appendChild(script);
             });
           } else {
-            console.log('⏳ Waiting for existing Google Maps script to load...');
+            console.log('Waiting for existing Google Maps script to load...');
             // Wait for existing script to load
             await new Promise((resolve) => {
               const checkGoogle = setInterval(() => {
                 if (window.google?.maps) {
                   clearInterval(checkGoogle);
-                  console.log('✅ Google Maps API ready');
+                  console.log('Google Maps API ready');
                   resolve(true);
                 }
               }, 100);
@@ -220,7 +220,7 @@ export default function OpenStreetMapLocationPicker({
           }
         }
 
-        console.log('🗺️ Creating Google Map instance...');
+        console.log('Creating Google Map instance...');
         const map = new window.google.maps.Map(googleMapRef.current!, {
           center: { lat: mapCenter[0], lng: mapCenter[1] },
           zoom: 15,
@@ -232,7 +232,7 @@ export default function OpenStreetMapLocationPicker({
           draggable: true,
         });
         
-        console.log('✅ Google Map initialized successfully');
+        console.log('Google Map initialized successfully');
 
         // Handle marker drag
         marker.addListener('dragend', async () => {
@@ -274,13 +274,13 @@ export default function OpenStreetMapLocationPicker({
       setGoogleMap(map);
       setGoogleMarker(marker);
       } catch (error) {
-        console.error('❌ Error initializing Google Maps:', error);
+        console.error('Error initializing Google Maps:', error);
         // Show error in the map area
         if (googleMapRef.current) {
           googleMapRef.current.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #fef3c7; padding: 20px; text-align: center;">
               <div>
-                <p style="color: #92400e; font-weight: 600; margin-bottom: 8px;">⚠️ Google Maps failed to load</p>
+                <p style="color: #92400e; font-weight: 600; margin-bottom: 8px;">Google Maps failed to load</p>
                 <p style="color: #78350f; font-size: 14px;">Check console for details. Try using OpenStreetMap or Mapbox instead.</p>
               </div>
             </div>
@@ -488,7 +488,7 @@ export default function OpenStreetMapLocationPicker({
           setSearchQuery('');
           const isShortened = query.includes('goo.gl');
           const message = isShortened 
-            ? '❌ Shortened Google Maps links cannot be processed.\n\n✅ Please use ONE of these methods instead:\n\n1. Search by name (e.g., "Kangema Town")\n2. Paste the FULL Google Maps URL (not shortened)\n3. Click directly on the map below\n4. Use "Current Location" button'
+            ? 'Shortened Google Maps links cannot be processed.\n\nPlease use ONE of these methods instead:\n\n1. Search by name (e.g., "Kangema Town")\n2. Paste the FULL Google Maps URL (not shortened)\n3. Click directly on the map below\n4. Use "Current Location" button'
             : 'Could not extract coordinates from this link. Please try:\n- Searching for the address instead\n- Using "Current Location" button\n- Clicking on the map after showing it';
           alert(message);
       }
@@ -600,7 +600,7 @@ export default function OpenStreetMapLocationPicker({
       <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
         <LinkIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
         <span>
-          💡 <strong>Tip:</strong> Paste a <strong>full</strong> Google Maps URL or search for an address. For shortened links (goo.gl), open them in your browser first and copy the full URL from the address bar.
+          <strong>Tip:</strong> Paste a <strong>full</strong> Google Maps URL or search for an address. For shortened links (goo.gl), open them in your browser first and copy the full URL from the address bar.
         </span>
       </div>
 
@@ -694,7 +694,7 @@ export default function OpenStreetMapLocationPicker({
             <>
               <div ref={mapContainerRef} className="h-64 w-full" />
               <div className="bg-gray-50 dark:bg-gray-700 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
-                💡 Click on the map or drag the marker to set the delivery location (FREE!)
+                Click on the map or drag the marker to set the delivery location (FREE!)
               </div>
             </>
           )}
@@ -704,7 +704,7 @@ export default function OpenStreetMapLocationPicker({
             <>
               <div ref={mapboxMapRef} className="h-64 w-full" />
               <div className="bg-gray-50 dark:bg-gray-700 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
-                💡 Click on the map or drag the marker to set the delivery location (Mapbox)
+                Click on the map or drag the marker to set the delivery location (Mapbox)
               </div>
             </>
           )}
@@ -714,7 +714,7 @@ export default function OpenStreetMapLocationPicker({
             <>
               <div ref={googleMapRef} className="h-64 w-full" />
               <div className="bg-gray-50 dark:bg-gray-700 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
-                💡 Click on the map or drag the marker to set the delivery location (Google Maps)
+                Click on the map or drag the marker to set the delivery location (Google Maps)
               </div>
             </>
           )}

@@ -62,7 +62,7 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
-    console.log('🗺️ Google Maps API Key loaded:', apiKey ? `${apiKey.substring(0, 20)}...` : 'NOT FOUND');
+    console.log('Google Maps API Key loaded:', apiKey ? `${apiKey.substring(0, 20)}...` : 'NOT FOUND');
     if (!apiKey) {
       setError('Google Maps API key not configured');
       return;
@@ -97,7 +97,7 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
           destMarkerRef.current = new google.maps.Marker({
             position: { lat: destination.lat, lng: destination.lng },
             map,
-            label: '🎯',
+            label: 'D',
             title: destination.address || 'Delivery Destination',
           });
         } else {
@@ -110,7 +110,7 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
             driverMarkerRef.current = new google.maps.Marker({
               position: { lat: driver.lat, lng: driver.lng },
               map,
-              label: '🚚',
+              label: 'T',
               title: 'Driver Location',
             });
           } else {
@@ -186,7 +186,7 @@ export default function GoogleLiveMap({ destination, driver, zoom = 13, classNam
       <div className={className || 'w-full h-[500px] bg-gray-100'}>
         <div className="flex flex-col items-center justify-center h-full text-center p-8">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md">
-            <h3 className="text-lg font-semibold text-yellow-800 mb-2">⚠️ Google Maps Configuration Required</h3>
+                        <h3 className="text-lg font-semibold text-yellow-800 mb-2">Google Maps Configuration Required</h3>
             <p className="text-sm text-yellow-700 mb-4">{error}</p>
             <div className="text-xs text-yellow-600 text-left space-y-2">
               <p className="font-semibold">To fix this error:</p>

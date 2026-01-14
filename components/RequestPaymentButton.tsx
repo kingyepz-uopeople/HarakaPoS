@@ -54,7 +54,7 @@ export default function RequestPaymentButton({
         throw new Error(data.error || "Failed to initiate payment");
       }
 
-      alert(`✅ Payment request sent to ${phoneNumber}\n\n${data.customerMessage}\n\nCustomer will receive a prompt to enter their M-Pesa PIN.`);
+            alert(`Payment request sent to ${phoneNumber}\n\n${data.customerMessage}\n\nCustomer will receive a prompt to enter their M-Pesa PIN.`);
       
       if (onSuccess) {
         onSuccess();
@@ -62,7 +62,7 @@ export default function RequestPaymentButton({
     } catch (error: any) {
       console.error("Payment request error:", error);
       const errorMessage = error.message || "Failed to send payment request";
-      alert(`❌ ${errorMessage}`);
+      alert(`Error: ${errorMessage}`);
       
       if (onError) {
         onError(errorMessage);
@@ -146,8 +146,8 @@ export default function RequestPaymentButton({
             )}
           </button>
 
-          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900">
-            <p className="font-medium mb-1">📱 What happens next:</p>
+                    <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900">
+            <p className="font-medium mb-1">What happens next:</p>
             <ol className="list-decimal list-inside space-y-1 text-xs">
               <li>Customer receives M-Pesa prompt on their phone</li>
               <li>Customer enters their M-Pesa PIN</li>

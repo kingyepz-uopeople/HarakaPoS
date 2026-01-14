@@ -272,9 +272,9 @@ export default function EmbeddedMapOSM({ origin, destination, className = '' }: 
           
           <div className="space-y-2 text-sm">
             {useCurrentLocation && (
-              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
                 <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full">
-                  📍 Using Your GPS Location
+                  Using Your GPS Location
                 </span>
               </div>
             )}

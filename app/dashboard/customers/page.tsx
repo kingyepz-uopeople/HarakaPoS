@@ -407,7 +407,7 @@ export default function CustomersPage() {
                     placeholder="Paste Google Maps link or search address..."
                   />
                   <p className="mt-1 text-xs text-gray-500">
-                    💡 Paste a Google Maps share link or search for the customer's location
+                                        Paste a Google Maps share link or search for the customer's location
                   </p>
                 </div>
 

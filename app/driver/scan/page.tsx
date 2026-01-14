@@ -116,7 +116,7 @@ export default function DriverScanPage() {
       );
 
       if (result.success) {
-        setSuccess(`✅ Status updated to: ${selectedStatus.toUpperCase()}`);
+                setSuccess(`Status updated to: ${selectedStatus.toUpperCase()}`);
         
         // Reset form
         setTimeout(() => {
@@ -251,7 +251,7 @@ export default function DriverScanPage() {
 
                 {barcodeDetails.customer_phone && (
                   <div className="flex items-center gap-2">
-                    <span className="text-gray-600">📞</span>
+                                        <span className="text-gray-600">Tel:</span>
                     <a 
                       href={`tel:${barcodeDetails.customer_phone}`}
                       className="text-blue-600 hover:underline"

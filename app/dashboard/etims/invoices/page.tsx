@@ -60,14 +60,14 @@ export default function EtimsInvoicesPage() {
       const result = await etimsClient.submitInvoice(invoiceId);
 
       if (result.success) {
-        alert('✅ Invoice submitted to KRA successfully');
+                alert('Invoice submitted to KRA successfully');
         fetchInvoices();
       } else {
-        alert(`❌ Submission failed: ${result.message}`);
+                alert(`Submission failed: ${result.message}`);
       }
-    } catch (error: any) {
+        } catch (error: any) {
       console.error('Error submitting invoice:', error);
-      alert(`❌ Error: ${error.message}`);
+      alert(`Error: ${error.message}`);
     } finally {
       setSubmitting(null);
     }
@@ -80,15 +80,15 @@ export default function EtimsInvoicesPage() {
       const result = await retryFailedInvoices();
       setRetryResult(result);
       
-      if (result.success) {
-        alert(`✅ Retry complete:\n${result.succeeded} succeeded\n${result.failed} failed`);
+            if (result.success) {
+        alert(`Retry complete:\n${result.succeeded} succeeded\n${result.failed} failed`);
         fetchInvoices();
       } else {
-        alert('❌ Retry process failed');
+        alert('Retry process failed');
       }
-    } catch (error: any) {
+        } catch (error: any) {
       console.error('Error retrying invoices:', error);
-      alert(`❌ Error: ${error.message}`);
+      alert(`Error: ${error.message}`);
     } finally {
       setRetrying(false);
     }
@@ -180,7 +180,7 @@ export default function EtimsInvoicesPage() {
             Retry Complete: {retryResult.processed} invoices processed
           </p>
           <p className="text-sm text-blue-700 mt-1">
-            ✅ {retryResult.succeeded} succeeded | ❌ {retryResult.failed} failed
+            {retryResult.succeeded} succeeded | {retryResult.failed} failed
           </p>
         </div>
       )}

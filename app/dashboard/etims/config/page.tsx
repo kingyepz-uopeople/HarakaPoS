@@ -261,7 +261,7 @@ export default function EtimsConfigPage() {
             
             <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="text-sm text-green-800">
-                <strong>✅ Cloud-based OSCU (Online Sales Control Unit)</strong>
+                                <strong>Cloud-based OSCU (Online Sales Control Unit)</strong>
                 <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
                   <li>No physical KRA device required</li>
                   <li>Pure REST API integration with KRA</li>
@@ -300,10 +300,10 @@ export default function EtimsConfigPage() {
                   <option value="sandbox">Sandbox (Testing)</option>
                   <option value="production">Production (Live)</option>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-gray-500 mt-1">
                   {formData.environment === 'sandbox' 
-                    ? '⚠️ Test environment - No real tax submission'
-                    : '🚨 LIVE environment - Real tax invoices!'}
+                    ? 'Test environment - No real tax submission'
+                    : 'LIVE environment - Real tax invoices!'}
                 </p>
               </div>
             </div>

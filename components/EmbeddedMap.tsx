@@ -85,11 +85,11 @@ export default function EmbeddedMap({
     googleMapRef.current = map;
 
     // Add destination marker
-    new window.google.maps.Marker({
+        new window.google.maps.Marker({
       position: { lat: destinationLat, lng: destinationLng },
       map: map,
       title: customerName,
-      label: "📍",
+      label: "D",
       animation: window.google.maps.Animation.DROP,
     });
 

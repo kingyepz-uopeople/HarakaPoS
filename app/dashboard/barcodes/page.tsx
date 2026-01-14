@@ -78,12 +78,12 @@ export default function BarcodesPage() {
     });
 
     if (result.success) {
-      alert(`✅ Barcode generated: ${result.barcode}`);
+            alert(`Barcode generated: ${result.barcode}`);
       setShowNewModal(false);
       fetchBarcodes();
       fetchStatistics();
     } else {
-      alert(`❌ Error: ${result.error}`);
+            alert(`Error: ${result.error}`);
     }
   };
 
@@ -471,8 +471,8 @@ function NewBarcodeModal({ onClose, onGenerate }: { onClose: () => void; onGener
                 ? 'bg-white text-blue-600 shadow'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-          >
-            📦 From Order
+                    >
+            From Order
           </button>
           <button
             type="button"
@@ -482,8 +482,8 @@ function NewBarcodeModal({ onClose, onGenerate }: { onClose: () => void; onGener
                 ? 'bg-white text-blue-600 shadow'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-          >
-            ✏️ Manual Entry
+                    >
+            Manual Entry
           </button>
         </div>
 
@@ -498,8 +498,8 @@ function NewBarcodeModal({ onClose, onGenerate }: { onClose: () => void; onGener
                 {loadingOrders ? (
                   <div className="text-sm text-gray-500 py-2">Loading orders...</div>
                 ) : orders.length === 0 ? (
-                  <div className="text-sm text-gray-500 py-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    ⚠️ No orders available without barcodes. All orders either have barcodes or are completed.
+                                    <div className="text-sm text-gray-500 py-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    No orders available without barcodes. All orders either have barcodes or are completed.
                   </div>
                 ) : (
                   <select

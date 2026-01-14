@@ -73,13 +73,13 @@ export default function PDAPaymentFlow({
       // 2. Print receipt to PDA
       await printReceiptToPDA(data.receiptId);
 
-      // 3. Show success
-      alert(`✅ Payment received!\n\nReceipt printed to PDA terminal.`);
+            // 3. Show success
+      alert(`Payment received!\n\nReceipt printed to PDA terminal.`);
       
       onComplete();
     } catch (error: any) {
       console.error("Payment error:", error);
-      alert(`❌ Error: ${error.message}`);
+      alert(`Error: ${error.message}`);
       setStep("select");
     }
   };
@@ -105,9 +105,9 @@ export default function PDAPaymentFlow({
       // - Send ESC/POS commands
       // - Print the receipt
       
-    } catch (error) {
+        } catch (error) {
       console.error("Print error:", error);
-      alert("⚠️ Payment recorded but printing failed. You can reprint from order details.");
+      alert("Payment recorded but printing failed. You can reprint from order details.");
     } finally {
       setPrinting(false);
     }
@@ -248,7 +248,7 @@ export default function PDAPaymentFlow({
             </div>
             
             <div className="bg-white rounded p-3 space-y-2 text-sm">
-              <p className="font-medium text-gray-900">📱 On the PDA terminal:</p>
+              <p className="font-medium text-gray-900">On the PDA terminal:</p>
               <ol className="list-decimal list-inside space-y-1 text-gray-700">
                 <li>Open M-Pesa app/menu</li>
                 <li>Select "Lipa na M-Pesa"</li>
