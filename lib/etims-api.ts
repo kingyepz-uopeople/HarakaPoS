@@ -18,6 +18,47 @@ export class EtimsApiClient {
   }
 
   /**
+   * Get the appropriate API URL based on provider
+   */
+  private getApiUrl(): string {
+    if (!this.config) return this.apiUrl;
+    
+    if (this.config.provider === 'gavaconnect') {
+      // GavaConnect API endpoint
+      return this.config.environment === 'production'
+        ? 'https://api.gavaconnect.com/v1/products/etims'
+        : 'https://sandbox-api.gavaconnect.com/v1/products/etims';
+    }
+    
+    // Direct KRA API
+    return this.config.api_base_url || this.apiUrl;
+  }
+
+  /**
+   * Get authentication headers based on provider
+   */
+  private getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    if (this.config?.provider === 'gavaconnect') {
+      // GavaConnect authentication
+      if (this.config.gavaconnect_app_id && this.config.gavaconnect_api_key) {
+        headers['X-App-ID'] = this.config.gavaconnect_app_id;
+        headers['X-API-Key'] = this.config.gavaconnect_api_key;
+        
+        if (this.config.gavaconnect_api_secret) {
+          headers['X-API-Secret'] = this.config.gavaconnect_api_secret;
+        }
+      }
+    }
+
+    return headers;
+  }
+
+  /**
    * Initialize the eTIMS client with configuration
    */
   async initialize(): Promise<boolean> {
@@ -57,7 +98,7 @@ export class EtimsApiClient {
     }
 
     try {
-      const endpoint = `${this.apiUrl}/initializer/selectInitInfo`;
+      const endpoint = `${this.getApiUrl()}/initializer/selectInitInfo`;
       
       const requestData = {
         tin: this.config.tin || this.config.kra_pin,
@@ -70,10 +111,7 @@ export class EtimsApiClient {
 
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(requestData),
       });
 
@@ -151,17 +189,14 @@ export class EtimsApiClient {
       // Build KRA OSCU payload
       const requestData = this.buildOSCUPayload(invoice);
 
-      const endpoint = `${this.apiUrl}/trnsSales/saveSales`;
+      const endpoint = `${this.getApiUrl()}/trnsSales/saveSales`;
 
       // Log request
       await this.logSync('submit_invoice', requestData, null, 'success', null, invoiceId);
 
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(requestData),
       });
 

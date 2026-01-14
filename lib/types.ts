@@ -297,6 +297,12 @@ export interface EtimsConfig {
   kra_pin: string;
   business_type: string;
   
+  // Provider selection
+  provider: 'kra' | 'gavaconnect'; // Choose between direct KRA API or GavaConnect middleware
+  gavaconnect_app_id?: string; // GavaConnect App ID
+  gavaconnect_api_key?: string; // GavaConnect API Key
+  gavaconnect_api_secret?: string; // GavaConnect API Secret
+  
   // OSCU (Online Sales Control Unit) - Cloud/System-to-System
   oscu_device_id?: string; // Generated device identifier for OSCU
   oscu_serial_number?: string; // Returned by KRA after initialization

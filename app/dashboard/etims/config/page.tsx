@@ -16,6 +16,10 @@ export default function EtimsConfigPage() {
     business_name: 'Haraka Wedges Supplies',
     kra_pin: '',
     business_type: 'sole_proprietorship',
+    provider: 'gavaconnect' as 'kra' | 'gavaconnect',
+    gavaconnect_app_id: '',
+    gavaconnect_api_key: '',
+    gavaconnect_api_secret: '',
     environment: 'sandbox' as 'sandbox' | 'production',
     bhf_id: '',
     tin: '',
@@ -45,6 +49,10 @@ export default function EtimsConfigPage() {
         business_name: data.business_name,
         kra_pin: data.kra_pin,
         business_type: data.business_type,
+        provider: data.provider || 'gavaconnect',
+        gavaconnect_app_id: data.gavaconnect_app_id || '',
+        gavaconnect_api_key: data.gavaconnect_api_key || '',
+        gavaconnect_api_secret: data.gavaconnect_api_secret || '',
         environment: data.environment,
         bhf_id: data.bhf_id || '',
         tin: data.tin || '',
@@ -256,20 +264,101 @@ export default function EtimsConfigPage() {
 
           {/* OSCU Information */}
           <div className="border-t pt-6">
-            <h2 className="text-xl font-semibold mb-4">OSCU Configuration</h2>
+            <h2 className="text-xl font-semibold mb-4">eTIMS Provider</h2>
             
-            <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="text-sm text-green-800">
-                <strong>✅ Cloud-based OSCU (Online Sales Control Unit)</strong>
-                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
-                  <li>No physical KRA device required</li>
-                  <li>Pure REST API integration with KRA</li>
-                  <li>Works on any cloud platform (Vercel, AWS, etc.)</li>
-                  <li>Device ID auto-generated on initialization</li>
-                  <li>QR codes provided directly by KRA</li>
-                </ul>
-              </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                Integration Provider *
+              </label>
+              <select
+                value={formData.provider}
+                onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'kra' | 'gavaconnect' })}
+                className="w-full px-3 py-2 border rounded-lg"
+                required
+              >
+                <option value="gavaconnect">GavaConnect (Recommended for Development)</option>
+                <option value="kra">KRA Direct API</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.provider === 'gavaconnect' 
+                  ? 'GavaConnect provides a developer-friendly sandbox and middleware for eTIMS testing'
+                  : 'Direct integration with KRA eTIMS API (requires active KRA credentials)'
+                }
+              </p>
             </div>
+
+            {formData.provider === 'gavaconnect' && (
+              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="text-sm text-blue-800">
+                  <strong>🔗 GavaConnect Setup</strong>
+                  <ol className="list-decimal list-inside ml-4 mt-2 space-y-1">
+                    <li>Sign up at <a href="https://gavaconnect.com" target="_blank" rel="noopener noreferrer" className="underline">gavaconnect.com</a></li>
+                    <li>Create a new app and select "Products" integration</li>
+                    <li>Copy your App ID, API Key, and API Secret from the dashboard</li>
+                    <li>Paste them below to connect</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+
+            {formData.provider === 'gavaconnect' ? (
+              <div className="grid grid-cols-1 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    GavaConnect App ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.gavaconnect_app_id}
+                    onChange={(e) => setFormData({ ...formData, gavaconnect_app_id: e.target.value })}
+                    placeholder="Your GavaConnect App ID"
+                    className="w-full px-3 py-2 border rounded-lg font-mono text-sm"
+                    required={formData.provider === 'gavaconnect'}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    GavaConnect API Key *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.gavaconnect_api_key}
+                    onChange={(e) => setFormData({ ...formData, gavaconnect_api_key: e.target.value })}
+                    placeholder="Your GavaConnect API Key"
+                    className="w-full px-3 py-2 border rounded-lg font-mono text-sm"
+                    required={formData.provider === 'gavaconnect'}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    GavaConnect API Secret *
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.gavaconnect_api_secret}
+                    onChange={(e) => setFormData({ ...formData, gavaconnect_api_secret: e.target.value })}
+                    placeholder="Your GavaConnect API Secret"
+                    className="w-full px-3 py-2 border rounded-lg font-mono text-sm"
+                    required={formData.provider === 'gavaconnect'}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="text-sm text-green-800">
+                  <strong>✅ Cloud-based OSCU (Online Sales Control Unit)</strong>
+                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                    <li>No physical KRA device required</li>
+                    <li>Pure REST API integration with KRA</li>
+                    <li>Works on any cloud platform (Vercel, AWS, etc.)</li>
+                    <li>Device ID auto-generated on initialization</li>
+                    <li>QR codes provided directly by KRA</li>
+                  </ul>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
